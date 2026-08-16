@@ -44,25 +44,28 @@
 
 /* ---------------------------------------------------------------- Login  */
 
-/* base.css already pulls the first section up by --header-group-height when the
-   header is transparent, so only clear the header when that rule is in play. */
 .customer-account--guest {
-  padding-top: 30px;
-  padding-bottom: 50px;
   background-color: var(--account-login-bg);
 }
 
-body:has(.header[transparent]) .customer-account--guest {
+/* base.css already pulls the first section up by --header-group-height when the
+   header is transparent, so only clear the header when that rule is in play. */
+.customer-account--guest .customer-account__inner {
+  padding-top: 30px;
+  padding-bottom: 50px;
+}
+
+body:has(.header[transparent]) .customer-account--guest .customer-account__inner {
   padding-top: calc(var(--account-height) + 30px);
 }
 
 @media screen and (min-width: 901px) {
-  .customer-account--guest {
+  .customer-account--guest .customer-account__inner {
     padding-top: 60px;
     padding-bottom: 60px;
   }
 
-  body:has(.header[transparent]) .customer-account--guest {
+  body:has(.header[transparent]) .customer-account--guest .customer-account__inner {
     padding-top: calc(var(--account-height) + 60px);
   }
 }
