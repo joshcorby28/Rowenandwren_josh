@@ -440,6 +440,22 @@ function resolveMockMode(config) {
   return params.get('mock') === '1' || params.get('mock') === 'true';
 }
 
+const DEFAULT_STRINGS = {
+  nav_welcome: 'A Warm Welcome',
+  nav_address_book: 'My Address Book',
+  nav_orders: 'My Orders',
+  nav_returns: 'Returns',
+  nav_logout: 'Logout',
+  welcome_hero: 'Welcome {{ name }}',
+  welcome_eyebrow: 'A lovely new addition',
+  welcome_heading: 'Welcome Back',
+  welcome_body:
+    "It's good to see you again. You'll notice a few new things since your last visit. Pieces made to be used, lived with, and gathered around. Take a look around when it suits.",
+  welcome_cta: 'Browse Our Current Collection',
+  account_navigation: 'Account navigation',
+  account_title: 'Account',
+};
+
 class CustomerAccountApp {
   /** @type {HTMLElement | null} */
   #root = null;
@@ -529,7 +545,13 @@ class CustomerAccountApp {
   }
 
   #t(key, replacements = {}) {
-    let value = this.#strings[key] || key;
+    const fromConfig = this.#strings[key];
+    const looksMissing =
+      !fromConfig ||
+      fromConfig === key ||
+      fromConfig.startsWith('customer_account.') ||
+      fromConfig.toLowerCase().startsWith('translation missing');
+    let value = looksMissing ? DEFAULT_STRINGS[key] || fromConfig || key : fromConfig;
     Object.entries(replacements).forEach(([token, replacement]) => {
       value = value.replace(new RegExp(`{{\\s*${token}\\s*}}`, 'g'), String(replacement));
     });
@@ -1567,15 +1589,21 @@ class CustomerAccountApp {
 /**
  * @param {HTMLElement} root
  */
+function parseAccountConfig(root) {
+  const jsonEl = root.closest('[data-customer-account-section]')?.querySelector('[data-customer-account-config]');
+
+  try {
+    if (jsonEl?.textContent) return JSON.parse(jsonEl.textContent);
+    return JSON.parse(root.dataset.customerAccountConfig || '{}');
+  } catch {
+    return {};
+  }
+}
+
 function initCustomerAccountApp(root) {
   if (!root || root.dataset.initialized === 'true') return;
 
-  let config = {};
-  try {
-    config = JSON.parse(root.dataset.customerAccountConfig || '{}');
-  } catch {
-    config = {};
-  }
+  const config = parseAccountConfig(root);
 
   root.dataset.initialized = 'true';
   const app = new CustomerAccountApp(root, config);

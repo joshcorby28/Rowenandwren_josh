@@ -121,9 +121,10 @@
     {%- endif -%}
   </template>
 
-  <div
-    data-customer-account-app
-    data-customer-account-config='{
+  <div data-customer-account-app></div>
+
+  <script type="application/json" data-customer-account-config>
+    {
       "clientId": {{ settings.customer_account_client_id | json }},
       "redirectUri": {% if settings.customer_account_page != blank %}{{ settings.customer_account_page | json }}{% else %}{{ request.origin | append: page.url | json }}{% endif %},
       "shopDomain": {{ shop.permanent_domain | json }},
@@ -131,10 +132,10 @@
       "content": {
         "returnsUrl": {{ section.settings.returns_url | default: "/pages/returns" | json }},
         "collectionUrl": {{ section.settings.collection_url | default: "/collections/all" | json }},
-        "welcomeEyebrow": {{ section.settings.welcome_eyebrow | json }},
-        "welcomeHeading": {{ section.settings.welcome_heading | json }},
-        "welcomeBody": {{ section.settings.welcome_body | json }},
-        "welcomeCta": {{ section.settings.welcome_cta_label | json }}
+        "welcomeEyebrow": {{ section.settings.welcome_eyebrow | default: "A lovely new addition" | json }},
+        "welcomeHeading": {{ section.settings.welcome_heading | default: "Welcome Back" | json }},
+        "welcomeBody": {{ section.settings.welcome_body | default: "It's good to see you again. You'll notice a few new things since your last visit. Pieces made to be used, lived with, and gathered around. Take a look around when it suits." | json }},
+        "welcomeCta": {{ section.settings.welcome_cta_label | default: "Browse Our Current Collection" | json }}
       },
       "strings": {
         "loading": {{ 'customer_account.loading' | t | json }},
@@ -198,8 +199,8 @@
         "mock_mode_banner": {{ 'customer_account.mock_mode_banner' | t | json }},
         "mock_mode_guest_hint": {{ 'customer_account.mock_mode_guest_hint' | t | json }}
       }
-    }'
-  ></div>
+    }
+  </script>
 </section>
 
 <script src="{{ 'customer-account.js' | asset_url }}" type="module"></script>

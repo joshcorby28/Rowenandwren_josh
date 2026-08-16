@@ -34,12 +34,14 @@
 }
 
 .customer-account__header--hero {
-  min-height: 280px;
+  height: 420px;
+  min-height: 420px;
 }
 
 @media screen and (min-width: 901px) {
   .customer-account__header--hero {
-    min-height: 340px;
+    height: 700px;
+    min-height: 700px;
   }
 }
 
