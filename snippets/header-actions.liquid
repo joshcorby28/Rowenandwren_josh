@@ -72,8 +72,13 @@
         assign account_actions_style = '--header-actions-font-family: ' | append: font_family_safe | append: '; --header-actions-font-weight: ' | append: font_obj.weight | append: ';'
       endif
 
-      if settings.customer_account_page != blank
-        assign account_href = settings.customer_account_page
+      assign custom_account_url = settings.customer_account_page
+      if custom_account_url == blank
+        assign custom_account_url = pages['account'].url
+      endif
+
+      if custom_account_url != blank
+        assign account_href = custom_account_url
       elsif customer
         assign account_href = routes.account_url
       else
@@ -83,7 +88,7 @@
     <div
       class="account-button header-actions__action{% if display_style == 'text' %} account-button--text{% endif %} color-{{ settings.popover_color_scheme }}"
     >
-      {% if settings.customer_account_page != blank %}
+      {% if custom_account_url != blank %}
         <a
           href="{{ account_href }}"
           class="account-button__link header-actions__action{% if display_style == 'text' %} header-actions__text-style{% endif %}"
