@@ -71,21 +71,44 @@
         assign font_family_safe = font_family | replace: '"', "'"
         assign account_actions_style = '--header-actions-font-family: ' | append: font_family_safe | append: '; --header-actions-font-weight: ' | append: font_obj.weight | append: ';'
       endif
+
+      if settings.customer_account_page != blank
+        assign account_href = settings.customer_account_page
+      elsif customer
+        assign account_href = routes.account_url
+      else
+        assign account_href = routes.account_login_url
+      endif
     %}
     <div
       class="account-button header-actions__action{% if display_style == 'text' %} account-button--text{% endif %} color-{{ settings.popover_color_scheme }}"
     >
-      {% comment %}
-        Shopify's <shopify-account> web component renders its own signed-in
-        avatar (a coloured circle with the customer's initial) inside its
-        shadow DOM. That avatar can't be replaced via a slot or restyled with
-        theme CSS. So when the customer is logged in we render our own account
-        link with the default account icon instead, and only fall back to
-        <shopify-account> for the signed-out state.
-      {% endcomment %}
-      {% if customer %}
+      {% if settings.customer_account_page != blank %}
         <a
-          href="{{ routes.account_url }}"
+          href="{{ account_href }}"
+          class="account-button__link header-actions__action{% if display_style == 'text' %} header-actions__text-style{% endif %}"
+          aria-label="{{ 'content.account_title' | t }}"
+          data-customer-account-link
+          {% if account_actions_style != blank %}
+            style="{{ account_actions_style }}"
+          {% endif %}
+        >
+          <span
+            class="account-button__text header-actions__text-style {% if display_style == 'icon' %}hidden{% else %}mobile:hidden{% endif %}"
+          >
+            {{ 'content.account_title' | t }}
+          </span>
+
+          <span
+            class="{% if display_style != 'icon' %}desktop:hidden{% endif %}"
+            aria-hidden="true"
+          >
+            {{ account_icon }}
+          </span>
+        </a>
+      {% elsif customer %}
+        <a
+          href="{{ account_href }}"
           class="account-button__link header-actions__action{% if display_style == 'text' %} header-actions__text-style{% endif %}"
           aria-label="{{ 'content.account_title' | t }}"
           {% if account_actions_style != blank %}

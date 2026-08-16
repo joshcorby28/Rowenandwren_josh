@@ -2495,5 +2495,26 @@
         "default": "RRP"
       }
     ]
+  },
+  {
+    "name": "Customer account",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "Configure the branded customer account area for new Shopify customer accounts. Enable Customer accounts in Shopify admin, then add a Headless/Hydrogen sales channel and copy the public Client ID. Set the callback URL to your account page (e.g. https://www.rowenandwren.co.uk/pages/account)."
+      },
+      {
+        "type": "text",
+        "id": "customer_account_client_id",
+        "label": "Customer Account API client ID",
+        "info": "Public client ID from Sales channels > Headless or Hydrogen > Customer Account API settings."
+      },
+      {
+        "type": "url",
+        "id": "customer_account_page",
+        "label": "Account page",
+        "info": "Online store page using the account template. Create a page with handle 'account' and assign the account template."
+      }
+    ]
   }
 ]

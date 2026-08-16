@@ -1,0 +1,154 @@
+{{ 'customer-account.css' | asset_url | stylesheet_tag }}
+
+<section
+  class="customer-account-section"
+  data-customer-account-section
+  {{ section.shopify_attributes }}
+>
+  <template data-header-image>
+    {%- if section.settings.header_image != blank -%}
+      {{
+        section.settings.header_image
+        | image_url: width: 1440
+        | image_tag:
+          class: 'customer-account__aside-image',
+          loading: 'lazy',
+          widths: '720, 900, 1080, 1440',
+          sizes: '100vw'
+      }}
+    {%- endif -%}
+  </template>
+
+  <template data-login-image>
+    {%- if section.settings.login_image != blank -%}
+      {{
+        section.settings.login_image
+        | image_url: width: 1200
+        | image_tag:
+          class: 'customer-account__aside-image',
+          loading: 'lazy',
+          widths: '540, 720, 900, 1200',
+          sizes: '(min-width: 901px) 50vw, 100vw'
+      }}
+    {%- else -%}
+      {%- if section.settings.header_image != blank -%}
+        {{
+          section.settings.header_image
+          | image_url: width: 1200
+          | image_tag:
+            class: 'customer-account__aside-image',
+            loading: 'lazy',
+            widths: '540, 720, 900, 1200',
+            sizes: '(min-width: 901px) 50vw, 100vw'
+        }}
+      {%- endif -%}
+    {%- endif -%}
+  </template>
+
+  <div
+    data-customer-account-app
+    data-customer-account-config='{
+      "clientId": {{ settings.customer_account_client_id | json }},
+      "redirectUri": {% if settings.customer_account_page != blank %}{{ settings.customer_account_page | json }}{% else %}{{ request.origin | append: page.url | json }}{% endif %},
+      "shopDomain": {{ shop.permanent_domain | json }},
+      "mockMode": {{ section.settings.use_mock_data | json }},
+      "strings": {
+        "loading": {{ 'customer_account.loading' | t | json }},
+        "try_again": {{ 'customer_account.try_again' | t | json }},
+        "error_generic": {{ 'customer_account.error_generic' | t | json }},
+        "error_discovery": {{ 'customer_account.error_discovery' | t | json }},
+        "error_auth_state": {{ 'customer_account.error_auth_state' | t | json }},
+        "error_auth_token": {{ 'customer_account.error_auth_token' | t | json }},
+        "error_client_id": {{ 'customer_account.error_client_id' | t | json }},
+        "error_unauthenticated": {{ 'customer_account.error_unauthenticated' | t | json }},
+        "error_session_expired": {{ 'customer_account.error_session_expired' | t | json }},
+        "account_title": {{ 'content.account_title' | t | json }},
+        "sign_in": {{ 'actions.log_in' | t | json }},
+        "sign_in_description": {{ 'customer_account.sign_in_description' | t | json }},
+        "new_user": {{ 'customer_account.new_user' | t | json }},
+        "join_us": {{ 'customer_account.join_us' | t | json }},
+        "account_overview": {{ 'customer_account.overview' | t | json }},
+        "orders": {{ 'content.account_orders' | t | json }},
+        "addresses": {{ 'customer_account.addresses' | t | json }},
+        "log_out": {{ 'actions.log_out' | t | json }},
+        "account_navigation": {{ 'customer_account.navigation' | t | json }},
+        "welcome": {{ 'customer_account.welcome' | t | json }},
+        "view_all_orders": {{ 'customer_account.view_all_orders' | t | json }},
+        "recent_orders": {{ 'customer_account.recent_orders' | t | json }},
+        "no_orders": {{ 'customer_account.no_orders' | t | json }},
+        "order_not_found": {{ 'customer_account.order_not_found' | t | json }},
+        "back_to_orders": {{ 'customer_account.back_to_orders' | t | json }},
+        "payment_status": {{ 'customer_account.payment_status' | t | json }},
+        "fulfillment_status": {{ 'customer_account.fulfillment_status' | t | json }},
+        "items": {{ 'customer_account.items' | t | json }},
+        "quantity": {{ 'accessibility.quantity' | t | json }},
+        "subtotal": {{ 'content.cart_subtotal' | t | json }},
+        "discounts": {{ 'content.discounts' | t | json }},
+        "shipping": {{ 'customer_account.shipping' | t | json }},
+        "tax": {{ 'customer_account.tax' | t | json }},
+        "total": {{ 'content.cart_total' | t | json }},
+        "shipping_address": {{ 'customer_account.shipping_address' | t | json }},
+        "billing_address": {{ 'customer_account.billing_address' | t | json }},
+        "not_available": {{ 'customer_account.not_available' | t | json }},
+        "no_addresses": {{ 'customer_account.no_addresses' | t | json }},
+        "add_address": {{ 'customer_account.add_address' | t | json }},
+        "update_address": {{ 'customer_account.update_address' | t | json }},
+        "default_address": {{ 'customer_account.default_address' | t | json }},
+        "edit": {{ 'customer_account.edit' | t | json }},
+        "delete": {{ 'actions.remove' | t | json }},
+        "set_default": {{ 'customer_account.set_default' | t | json }},
+        "confirm_delete_address": {{ 'customer_account.confirm_delete_address' | t | json }},
+        "first_name": {{ 'customer_account.first_name' | t | json }},
+        "last_name": {{ 'customer_account.last_name' | t | json }},
+        "company": {{ 'customer_account.company' | t | json }},
+        "address1": {{ 'customer_account.address1' | t | json }},
+        "address2": {{ 'customer_account.address2' | t | json }},
+        "city": {{ 'customer_account.city' | t | json }},
+        "province": {{ 'customer_account.province' | t | json }},
+        "postcode": {{ 'customer_account.postcode' | t | json }},
+        "country": {{ 'customer_account.country' | t | json }},
+        "phone": {{ 'customer_account.phone' | t | json }},
+        "mock_mode_banner": {{ 'customer_account.mock_mode_banner' | t | json }},
+        "mock_mode_guest_hint": {{ 'customer_account.mock_mode_guest_hint' | t | json }}
+      }
+    }'
+  ></div>
+</section>
+
+<script src="{{ 'customer-account.js' | asset_url }}" type="module"></script>
+
+{% schema %}
+{
+  "name": "Customer account",
+  "class": "section-customer-account",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Branded customer account powered by Shopify Customer Account API. Create a page with handle 'account' and assign this template. Configure the Client ID in Theme settings > Customer account."
+    },
+    {
+      "type": "checkbox",
+      "id": "use_mock_data",
+      "label": "Use mock account data",
+      "info": "Preview the account area with sample orders and addresses. No API credentials required. Turn off before publishing.",
+      "default": false
+    },
+    {
+      "type": "image_picker",
+      "id": "header_image",
+      "label": "Header background image"
+    },
+    {
+      "type": "image_picker",
+      "id": "login_image",
+      "label": "Login / register side image",
+      "info": "Shown beside sign-in on desktop. Falls back to header image."
+    }
+  ],
+  "presets": [
+    {
+      "name": "Customer account"
+    }
+  ]
+}
+{% endschema %}
