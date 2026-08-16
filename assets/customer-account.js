@@ -455,6 +455,12 @@ const DEFAULT_STRINGS = {
   welcome_cta: 'Browse Our Current Collection',
   account_navigation: 'Account navigation',
   account_title: 'Account',
+  sign_in: 'Sign In',
+  email_address: 'Email address',
+  password: 'Password',
+  forgotten_password: 'Forgotten your password?',
+  new_user: 'New User?',
+  join_us: 'Join us',
   addresses_hero: 'Your Addresses',
   orders_hero: 'Your Orders',
   add_new_address: 'Add A New Address',
@@ -857,7 +863,9 @@ class CustomerAccountApp {
    */
   #getRoute() {
     const params = new URLSearchParams(window.location.search);
-    const view = /** @type {AccountView} */ (params.get('view') || 'welcome');
+    const raw = params.get('tab') || params.get('view') || 'welcome';
+    const allowed = ['welcome', 'orders', 'order', 'addresses'];
+    const view = /** @type {AccountView} */ (allowed.includes(raw) ? raw : 'welcome');
     const orderId = params.get('order_id');
     return { view, orderId };
   }
@@ -866,9 +874,15 @@ class CustomerAccountApp {
    * @param {AccountView} view
    * @param {{ orderId?: string | null }} [options]
    */
-  #navigate(view, options = {}) {
+  #routeUrl(view, options = {}) {
     const url = new URL(window.location.href);
-    url.searchParams.set('view', view);
+    url.searchParams.delete('view');
+
+    if (!view || view === 'welcome') {
+      url.searchParams.delete('tab');
+    } else {
+      url.searchParams.set('tab', view);
+    }
 
     if (view === 'order' && options.orderId) {
       url.searchParams.set('order_id', options.orderId);
@@ -880,7 +894,15 @@ class CustomerAccountApp {
       url.searchParams.set('mock', '1');
     }
 
-    window.history.pushState({}, '', url.toString());
+    return url.toString();
+  }
+
+  /**
+   * @param {AccountView} view
+   * @param {{ orderId?: string | null }} [options]
+   */
+  #navigate(view, options = {}) {
+    window.history.pushState({}, '', this.#routeUrl(view, options));
     this.#renderCurrentView();
   }
 
@@ -932,19 +954,9 @@ class CustomerAccountApp {
 
     const section = this.#root.closest('[data-customer-account-section]');
     const loginImage = section?.querySelector('[data-login-image]')?.innerHTML || '';
-    const headerImage = section?.querySelector('[data-header-image]')?.innerHTML || '';
-    const mockHint = this.#mockMode || this.#mockPersistParam
-      ? `<p class="customer-account__box-text">${escapeHtml(this.#t('mock_mode_guest_hint'))}</p>`
-      : '';
 
     this.#root.innerHTML = `
       <section class="customer-account customer-account--guest">
-        <header class="customer-account__header">
-          <div class="customer-account__header-image">${headerImage}</div>
-          <div class="customer-account__header-content">
-            <h1 class="customer-account__header-title">${escapeHtml(this.#t('account_title'))}</h1>
-          </div>
-        </header>
         <div class="customer-account__inner">
           ${message ? `<div class="customer-account__state customer-account__state--error"><p>${escapeHtml(message)}</p></div>` : ''}
           <div class="customer-account__body customer-account__body--split">
@@ -952,20 +964,23 @@ class CustomerAccountApp {
               <div class="customer-account__items">
                 <div class="customer-account__box">
                   <h2 class="customer-account__box-title">${escapeHtml(this.#t('sign_in'))}</h2>
-                  <p class="customer-account__box-text">${escapeHtml(this.#t('sign_in_description'))}</p>
-                  ${mockHint}
-                  <div class="customer-account__form-footer">
-                    <div class="customer-account__form-actions">
-                      <button type="button" class="button customer-account__sign-in">${escapeHtml(this.#t('sign_in'))}</button>
+                  <form class="customer-account__login-form" data-login-form>
+                    <div class="customer-account__form-row">
+                      <input class="customer-account__input" type="email" name="email" placeholder="${escapeHtml(this.#t('email_address'))}" autocomplete="email">
                     </div>
-                  </div>
+                    <div class="customer-account__form-row">
+                      <input class="customer-account__input" type="password" name="password" placeholder="${escapeHtml(this.#t('password'))}" autocomplete="current-password">
+                    </div>
+                    <div class="customer-account__form-footer">
+                      <button type="submit" class="customer-account__btn">${escapeHtml(this.#t('sign_in'))}</button>
+                    </div>
+                  </form>
+                  <a class="customer-account__link customer-account__forgot" href="/account/login#recover">${escapeHtml(this.#t('forgotten_password'))}</a>
                 </div>
                 <div class="customer-account__box">
                   <h2 class="customer-account__box-title">${escapeHtml(this.#t('new_user'))}</h2>
                   <div class="customer-account__form-footer">
-                    <div class="customer-account__form-actions">
-                      <button type="button" class="button customer-account__sign-up">${escapeHtml(this.#t('join_us'))}</button>
-                    </div>
+                    <button type="button" class="customer-account__btn customer-account__sign-up">${escapeHtml(this.#t('join_us'))}</button>
                   </div>
                 </div>
               </div>
@@ -976,7 +991,7 @@ class CustomerAccountApp {
       </section>
     `;
 
-    this.#root.querySelector('.customer-account__sign-in')?.addEventListener('click', () => {
+    const startSession = () => {
       if (this.#mockMode || this.#mockPersistParam) {
         this.#mockMode = true;
         this.#mockSignedOut = false;
@@ -987,19 +1002,22 @@ class CustomerAccountApp {
       this.#startLogin().catch((error) => {
         this.#renderError(error instanceof Error ? error.message : this.#t('error_generic'));
       });
+    };
+
+    this.#root.querySelector('[data-login-form]')?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      startSession();
     });
 
     this.#root.querySelector('.customer-account__sign-up')?.addEventListener('click', () => {
-      if (this.#mockMode || this.#mockPersistParam) {
-        this.#mockMode = true;
-        this.#mockSignedOut = false;
-        this.init();
-        return;
-      }
+      startSession();
+    });
 
-      this.#startLogin().catch((error) => {
-        this.#renderError(error instanceof Error ? error.message : this.#t('error_generic'));
-      });
+    this.#root.querySelector('.customer-account__forgot')?.addEventListener('click', (event) => {
+      if (this.#mockMode || this.#mockPersistParam) {
+        event.preventDefault();
+        startSession();
+      }
     });
   }
 
@@ -1014,7 +1032,7 @@ class CustomerAccountApp {
     const links = items
       .map((item) => {
         const active = item.view === activeView ? ' customer-account__nav-link--active' : '';
-        return `<li class="customer-account__nav-item"><a href="#" class="customer-account__nav-link${active}" data-nav-view="${item.view}">${escapeHtml(item.label)}</a></li>`;
+        return `<li class="customer-account__nav-item"><a href="${escapeHtml(this.#routeUrl(item.view))}" class="customer-account__nav-link${active}" data-nav-view="${item.view}">${escapeHtml(item.label)}</a></li>`;
       })
       .join('');
 
@@ -1315,7 +1333,7 @@ class CustomerAccountApp {
           </div>
         </div>
         <div class="customer-account__inner customer-account__page">
-          <a href="#" class="customer-account__link customer-account__back-link" data-nav-view="orders">${escapeHtml(this.#t('back_to_orders'))}</a>
+          <a href="${escapeHtml(this.#routeUrl('orders'))}" class="customer-account__link customer-account__back-link" data-nav-view="orders">${escapeHtml(this.#t('back_to_orders'))}</a>
           <div class="customer-account__order-detail-grid">
             <div>
               <p class="customer-account__order-date">${escapeHtml(formatDate(order.processedAt))}</p>
@@ -1424,7 +1442,7 @@ class CustomerAccountApp {
       : `<div class="customer-account__order-image"></div>`;
 
     return `
-      <a href="#" class="customer-account__order-row" data-order-id="${escapeHtml(order.id)}">
+      <a href="${escapeHtml(this.#routeUrl('order', { orderId: order.id }))}" class="customer-account__order-row" data-order-id="${escapeHtml(order.id)}">
         ${image}
         <div class="customer-account__order-meta">
           <p class="customer-account__order-name">${escapeHtml(order.name)}</p>

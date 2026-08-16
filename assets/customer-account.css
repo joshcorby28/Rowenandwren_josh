@@ -1,11 +1,12 @@
 /* Rowen & Wren branded customer account – matches live legacy account styling */
 
 .customer-account {
-  --account-bg: #5c5c41;
-  --account-box-bg: #f4f4f0;
+  --account-bg: #6a6a66;
+  --account-box-bg: #ffffff;
   --account-grey-bg: #ecece6;
   --account-border: rgba(0, 0, 0, 0.12);
   --account-header-overlay: rgba(0, 0, 0, 0.35);
+  --account-btn: #4a4a47;
   padding-top: calc(var(--header-group-height, 80px) + 30px);
   padding-bottom: 50px;
   background-color: var(--account-bg);
@@ -13,10 +14,18 @@
   min-height: 60vh;
 }
 
+.customer-account--guest {
+  margin-top: calc(var(--header-group-height, 80px) * -1);
+  padding-top: calc(var(--header-group-height, 80px) + 40px);
+  padding-bottom: 60px;
+  min-height: 100vh;
+  color: #2c2c2c;
+}
+
 @media screen and (min-width: 901px) {
-  .customer-account {
+  .customer-account--guest {
     padding-top: calc(var(--header-group-height, 80px) + 60px);
-    padding-bottom: 60px;
+    padding-bottom: 80px;
   }
 }
 
@@ -139,11 +148,22 @@
   display: none;
 }
 
-.customer-account__aside-image {
+.customer-account__aside-image,
+.customer-account__aside img {
   width: 100%;
   height: 100%;
   min-height: 400px;
   object-fit: cover;
+}
+
+@media screen and (min-width: 901px) {
+  .customer-account--guest .customer-account__aside,
+  .customer-account--guest .customer-account__aside img,
+  .customer-account--guest .customer-account__aside-image {
+    min-height: 700px;
+    height: 700px;
+    object-fit: cover;
+  }
 }
 
 .customer-account__items {
@@ -160,19 +180,20 @@
 .customer-account__box {
   display: flex;
   flex-direction: column;
-  padding: 1.5rem;
+  align-items: stretch;
+  padding: 2rem 1.75rem 1.75rem;
   background-color: var(--account-box-bg);
 }
 
 @media screen and (min-width: 768px) {
   .customer-account__box {
-    padding: 1.75rem 2rem 2rem;
+    padding: 2.25rem 2.5rem 2rem;
   }
 }
 
 .customer-account__box-title {
-  margin: 0 0 1.25rem;
-  font-size: 1.375rem;
+  margin: 0 0 1.5rem;
+  font-size: 1.5rem;
   font-weight: 400;
   line-height: 1.75rem;
   text-align: center;
@@ -181,6 +202,36 @@
 .customer-account__box-text {
   margin: 0 0 1rem;
   text-align: center;
+}
+
+.customer-account__login-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.customer-account__btn {
+  display: block;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: 0;
+  background: var(--account-btn);
+  color: #fff;
+  font: inherit;
+  font-size: 0.75rem;
+  letter-spacing: 0.08rem;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.customer-account__btn:hover {
+  background: #3f3f3c;
+}
+
+.customer-account__forgot {
+  display: block;
+  margin: 1.25rem auto 0;
+  text-align: center;
+  width: fit-content;
 }
 
 .customer-account__form-row {
@@ -663,7 +714,7 @@
 .customer-account__mock-banner {
   padding: 0.75rem 1.25rem;
   text-align: center;
-  background: #4b5739;
+  background: #5a5a56;
   color: #fff;
   font-size: 0.8125rem;
   letter-spacing: 0.02em;
