@@ -5,6 +5,8 @@
   data-customer-account-section
   {{ section.shopify_attributes }}
 >
+  <select class="customer-account__hidden" data-country-options tabindex="-1" aria-hidden="true">{{ country_option_tags }}</select>
+
   <template data-header-image>
     {%- if section.settings.header_image != blank -%}
       {{
@@ -132,10 +134,10 @@
       "content": {
         "returnsUrl": {{ section.settings.returns_url | default: "https://www.rowenandwren.co.uk/a/returns" | json }},
         "collectionUrl": {{ section.settings.collection_url | default: "/collections/all" | json }},
-        "welcomeEyebrow": {{ section.settings.welcome_eyebrow | default: "A lovely new addition" | json }},
+        "welcomeEyebrow": {{ section.settings.welcome_eyebrow | default: "A few new additions" | json }},
         "welcomeHeading": {{ section.settings.welcome_heading | default: "Welcome Back" | json }},
         "welcomeBody": {{ section.settings.welcome_body | default: "It's good to see you again. You'll notice a few new things since your last visit. Pieces made to be used, lived with, and gathered around. Take a look around when it suits." | json }},
-        "welcomeCta": {{ section.settings.welcome_cta_label | default: "Browse Our Current Collection" | json }}
+        "welcomeCta": {{ section.settings.welcome_cta_label | default: "Peruse our current collection" | json }}
       },
       "strings": {
         "loading": {{ 'customer_account.loading' | t | json }},
@@ -251,7 +253,7 @@
       "type": "text",
       "id": "welcome_eyebrow",
       "label": "Eyebrow text",
-      "default": "A lovely new addition"
+      "default": "A few new additions"
     },
     {
       "type": "text",
@@ -269,7 +271,7 @@
       "type": "text",
       "id": "welcome_cta_label",
       "label": "Collection link label",
-      "default": "Browse Our Current Collection"
+      "default": "Peruse our current collection"
     },
     {
       "type": "url",

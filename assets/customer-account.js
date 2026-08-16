@@ -468,11 +468,11 @@ const DEFAULT_STRINGS = {
   nav_returns: 'Returns',
   nav_logout: 'Logout',
   welcome_hero: 'Welcome {{ name }}',
-  welcome_eyebrow: 'A lovely new addition',
+  welcome_eyebrow: 'A few new additions',
   welcome_heading: 'Welcome Back',
   welcome_body:
     "It's good to see you again. You'll notice a few new things since your last visit. Pieces made to be used, lived with, and gathered around. Take a look around when it suits.",
-  welcome_cta: 'Browse Our Current Collection',
+  welcome_cta: 'Peruse our current collection',
   account_navigation: 'Account navigation',
   account_title: 'Account',
   sign_in: 'Sign In',
@@ -486,19 +486,33 @@ const DEFAULT_STRINGS = {
   add_new_address: 'Add A New Address',
   your_addresses: 'Your Addresses',
   no_addresses: "You haven't added any addresses yet.",
+  no_orders: "You haven't placed any orders just yet.",
   add_address: 'Add Address',
-  update_address: 'Update Address',
+  update_address: 'Update',
   set_default_address: 'Set as default address',
+  default_address: 'Default Address',
+  edit: 'Edit',
+  delete: 'Delete',
+  back_to_orders: 'Back',
+  payment_status: 'Payment Status',
+  fulfillment_status: 'Fulfillment Status',
+  items: 'Order Summary',
+  shipping: 'Delivery',
+  tax: 'Tax',
+  subtotal: 'Subtotal',
+  total: 'Total',
+  shipping_address: 'Delivery Address',
+  billing_address: 'Billing Address',
   first_name: 'First name*',
   last_name: 'Last name*',
   company: 'Company name (optional)',
-  address1: 'Address*',
-  address2: 'Apartment, suite, etc. (optional)',
-  city: 'City*',
-  province: 'County / State',
+  address1: 'Address line 1*',
+  address2: 'Address line 2',
+  city: 'Town / City',
+  province: 'Province',
   postcode: 'Postcode*',
-  country: 'Select Country *',
-  phone: 'Phone',
+  country: 'Select Country...*',
+  phone: 'Phone number',
 };
 
 class CustomerAccountApp {
@@ -616,7 +630,7 @@ class CustomerAccountApp {
     this.#root.innerHTML = `
       <div class="customer-account__state customer-account__state--error">
         <p>${escapeHtml(message)}</p>
-        <button type="button" class="button customer-account__retry">${escapeHtml(this.#t('try_again'))}</button>
+        <button type="button" class="customer-account__btn customer-account__retry">${escapeHtml(this.#t('try_again'))}</button>
       </div>
     `;
     this.#root.querySelector('.customer-account__retry')?.addEventListener('click', () => {
@@ -981,8 +995,8 @@ class CustomerAccountApp {
         <div class="customer-account__inner">
           ${message ? `<div class="customer-account__state customer-account__state--error"><p>${escapeHtml(message)}</p></div>` : ''}
           <div class="customer-account__body customer-account__body--split">
-            <div class="customer-account__main">
-              <div class="customer-account__items">
+            <div class="customer-account__items">
+              <div class="customer-account__item">
                 <div class="customer-account__box">
                   <h2 class="customer-account__box-title">${escapeHtml(this.#t('sign_in'))}</h2>
                   <form class="customer-account__login-form" data-login-form>
@@ -994,15 +1008,15 @@ class CustomerAccountApp {
                     </div>
                     <div class="customer-account__form-footer">
                       <button type="submit" class="customer-account__btn">${escapeHtml(this.#t('sign_in'))}</button>
+                      <a class="customer-account__link customer-account__forgot" href="/account/login#recover">${escapeHtml(this.#t('forgotten_password'))}</a>
                     </div>
                   </form>
-                  <a class="customer-account__link customer-account__forgot" href="/account/login#recover">${escapeHtml(this.#t('forgotten_password'))}</a>
                 </div>
+              </div>
+              <div class="customer-account__item">
                 <div class="customer-account__box">
                   <h2 class="customer-account__box-title">${escapeHtml(this.#t('new_user'))}</h2>
-                  <div class="customer-account__form-footer">
-                    <button type="button" class="customer-account__btn customer-account__sign-up">${escapeHtml(this.#t('join_us'))}</button>
-                  </div>
+                  <button type="button" class="customer-account__btn customer-account__sign-up">${escapeHtml(this.#t('join_us'))}</button>
                 </div>
               </div>
             </div>
@@ -1555,45 +1569,64 @@ class CustomerAccountApp {
    * @param {{ includeDefault?: boolean }} [options]
    */
   #addressFormHtml(address = {}, options = {}) {
-    const selectedCountry = address.country || '';
-    const countries = ['United Kingdom', 'Ireland', 'France', 'Germany', 'Netherlands', 'Belgium', 'United States', 'Canada', 'Australia', 'New Zealand'];
-    const countryOptions = countries
-      .map((country) => {
-        const selected = country === selectedCountry ? ' selected' : '';
-        return `<option value="${escapeHtml(country)}"${selected}>${escapeHtml(country)}</option>`;
-      })
-      .join('');
+    const id = address.id || 'new';
+    const countryOptions = this.#countryOptionsHtml(address.country);
 
     const defaultCheckbox = options.includeDefault
-      ? `<label class="customer-account__checkbox">
-          <input type="checkbox" name="defaultAddress">
-          <span>${escapeHtml(this.#t('set_default_address'))}</span>
-        </label>`
+      ? `<div class="customer-account__checkbox">
+          <input type="checkbox" name="defaultAddress" id="AddressDefault-${escapeHtml(id)}">
+          <label class="customer-account__label" for="AddressDefault-${escapeHtml(id)}">${escapeHtml(this.#t('set_default_address'))}</label>
+        </div>`
       : '';
 
+    const field = (name, key, extra = '') =>
+      `<div class="customer-account__form-field"><input class="customer-account__input" type="text" name="${name}" placeholder="${escapeHtml(this.#t(key))}" value="${escapeHtml(address[name] || '')}"${extra}></div>`;
+
     return `
-      <form class="customer-account__address-form-inner" data-address-form-inner="${escapeHtml(address.id || 'new')}">
-        <div class="customer-account__form-row"><input class="customer-account__input" name="firstName" placeholder="${escapeHtml(this.#t('first_name'))}" value="${escapeHtml(address.firstName || '')}" required></div>
-        <div class="customer-account__form-row"><input class="customer-account__input" name="lastName" placeholder="${escapeHtml(this.#t('last_name'))}" value="${escapeHtml(address.lastName || '')}" required></div>
-        <div class="customer-account__form-row"><input class="customer-account__input" name="company" placeholder="${escapeHtml(this.#t('company'))}" value="${escapeHtml(address.company || '')}"></div>
-        <div class="customer-account__form-row"><input class="customer-account__input" name="address1" placeholder="${escapeHtml(this.#t('address1'))}" value="${escapeHtml(address.address1 || '')}" required></div>
-        <div class="customer-account__form-row"><input class="customer-account__input" name="address2" placeholder="${escapeHtml(this.#t('address2'))}" value="${escapeHtml(address.address2 || '')}"></div>
-        <div class="customer-account__form-row"><input class="customer-account__input" name="city" placeholder="${escapeHtml(this.#t('city'))}" value="${escapeHtml(address.city || '')}" required></div>
-        <div class="customer-account__form-row"><input class="customer-account__input" name="province" placeholder="${escapeHtml(this.#t('province'))}" value="${escapeHtml(address.province || '')}"></div>
-        <div class="customer-account__form-row"><input class="customer-account__input" name="zip" placeholder="${escapeHtml(this.#t('postcode'))}" value="${escapeHtml(address.zip || '')}" required></div>
-        <div class="customer-account__form-row">
-          <select class="customer-account__input customer-account__select" name="country" required>
-            <option value="">${escapeHtml(this.#t('country'))}</option>
+      <form class="customer-account__address-form-inner" data-address-form-inner="${escapeHtml(id)}">
+        ${field('firstName', 'first_name', ' required')}
+        ${field('lastName', 'last_name', ' required')}
+        ${field('company', 'company')}
+        ${field('address1', 'address1', ' required')}
+        ${field('address2', 'address2')}
+        ${field('city', 'city')}
+        <div class="customer-account__form-field">
+          <label class="customer-account__label" for="AddressCountry-${escapeHtml(id)}">${escapeHtml(this.#t('country'))}</label>
+          <select class="customer-account__input customer-account__select" name="country" id="AddressCountry-${escapeHtml(id)}" required>
             ${countryOptions}
           </select>
         </div>
-        <div class="customer-account__form-row"><input class="customer-account__input" name="phoneNumber" placeholder="${escapeHtml(this.#t('phone'))}" value="${escapeHtml(address.phoneNumber || '')}"></div>
+        ${field('province', 'province')}
+        ${field('zip', 'postcode', ' required')}
+        <div class="customer-account__form-field"><input class="customer-account__input" type="tel" name="phoneNumber" placeholder="${escapeHtml(this.#t('phone'))}" value="${escapeHtml(address.phoneNumber || '')}"></div>
         ${defaultCheckbox}
-        <div class="customer-account__form-footer">
-          <button type="submit" class="customer-account__submit">${escapeHtml(address.id ? this.#t('update_address') : this.#t('add_address'))}</button>
+        <div class="customer-account__form-actions">
+          <button type="submit" class="customer-account__btn customer-account__btn--grey">${escapeHtml(address.id ? this.#t('update_address') : this.#t('add_address'))}</button>
         </div>
       </form>
     `;
+  }
+
+  /**
+   * @param {string} [selected]
+   */
+  #countryOptionsHtml(selected = '') {
+    const section = this.#root?.closest('[data-customer-account-section]');
+    const fromTheme = section?.querySelector('[data-country-options]')?.innerHTML.trim();
+
+    const options =
+      fromTheme ||
+      ['United Kingdom', 'Ireland', 'France', 'Germany', 'Netherlands', 'Belgium', 'United States', 'Canada', 'Australia', 'New Zealand']
+        .map((country) => `<option value="${escapeHtml(country)}">${escapeHtml(country)}</option>`)
+        .join('');
+
+    if (!selected) return options;
+
+    const escaped = selected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    return options
+      .replace(/\sselected(="[^"]*")?/gi, '')
+      .replace(new RegExp(`<option value="${escaped}"`, 'i'), (match) => `${match} selected`);
   }
 
   #bindAddressActions() {
