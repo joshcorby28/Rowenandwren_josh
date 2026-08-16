@@ -1,0 +1,187 @@
+{%- doc -%}
+  Article body block.
+
+  Renders the article's rich-text content and splices the metafield-driven
+  content blocks (double_upsell / single_upsell / full_width_image / image_text)
+  into the body at the position of their placeholder tokens. See
+  `snippets/article-content.liquid` for the splicing logic.
+{%- enddoc -%}
+
+<div
+  class="article-content rte spacing-style"
+  style="{% render 'spacing-padding', settings: block.settings %}"
+  {{ block.shopify_attributes }}
+>
+  <rte-formatter>
+    {%- render 'article-content', article: closest.article -%}
+  </rte-formatter>
+</div>
+
+{% stylesheet %}
+  .article-content {
+    max-width: 100%;
+  }
+
+  /* Double upsell */
+  .art-DoubleUpsell {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-block: 30px;
+  }
+
+  @media screen and (min-width: 750px) {
+    .art-DoubleUpsell {
+      margin-block: 40px;
+    }
+  }
+
+  /* Single upsell */
+  .art-SingleUpsell {
+    margin-block: 30px;
+  }
+
+  @media screen and (min-width: 750px) {
+    .art-SingleUpsell {
+      margin-block: 40px;
+    }
+  }
+
+  /* Shared upsell card */
+  .art-UpsellItem {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .art-UpsellItem_Media img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .art-UpsellItem_Caption {
+    display: block;
+    margin-top: 10px;
+    font-family: var(--font-body--family);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  /* Full width image */
+  .art-FullWidthImage {
+    margin: 30px 0;
+  }
+
+  @media screen and (min-width: 750px) {
+    .art-FullWidthImage {
+      margin: 40px 0;
+    }
+  }
+
+  .art-FullWidthImage_Img,
+  .art-FullWidthImage img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .art-FullWidthImage_Caption {
+    margin-top: 10px;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    text-align: center;
+  }
+
+  /* Image + text */
+  .art-ImageText {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    align-items: center;
+    margin-block: 30px;
+  }
+
+  @media screen and (min-width: 750px) {
+    .art-ImageText {
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      margin-block: 40px;
+    }
+  }
+
+  .art-ImageText_Img,
+  .art-ImageText_Media img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .art-ImageText_Title {
+    margin: 0 0 10px;
+  }
+
+  .art-ImageText_Caption {
+    display: block;
+    margin-top: 10px;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Article content",
+  "settings": [
+    {
+      "type": "header",
+      "content": "t:content.padding"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start",
+      "label": "t:settings.left",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end",
+      "label": "t:settings.right",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    }
+  ],
+  "presets": [
+    {
+      "name": "Article content"
+    }
+  ]
+}
+{% endschema %}

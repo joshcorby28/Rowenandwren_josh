@@ -1,0 +1,79 @@
+{% if localization.country.iso_code == 'US' %}
+  {% if collection.metafields.custom.usa_sub_collections != blank and settings.collection_categories_enable %}
+    <ul class="collection-links">
+      {% for link in collection.metafields.custom.usa_sub_collections.value %}
+        {% if forloop.length <= 3 %}
+          <style>
+            @media screen and (max-width: 749px) {
+              .collection-links {
+                justify-content: center !important;
+              }
+            }
+          </style>
+        {% endif %}
+        
+        {% assign link_handle = link.url | split: '/' | last %}
+        {% assign linked_collection = collections[link_handle] %}
+        {% if linked_collection %}
+          {% assign custom_label = linked_collection.metafields.custom.custom_menu_label %}
+          {% assign label = custom_label | default: linked_collection.title %}
+        {% else %}
+          {% assign label = link.title %}
+        {% endif %}
+        <li>
+          <a 
+            href="{{ link.url }}" 
+            class="{% if link_handle == collection.handle %}collection-links__link-active{% endif %}">
+            {{ label }}
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% else %}
+  {% if collection.metafields.custom.sub_collections != blank and settings.collection_categories_enable %}
+    <ul class="collection-links">
+      {% for link in collection.metafields.custom.sub_collections.value %}
+        {% if forloop.length <= 3 %}
+          <style>
+            @media screen and (max-width: 749px) {
+              .collection-links {
+                justify-content: center !important;
+              }
+            }
+          </style>
+        {% endif %}
+        
+        {% assign link_handle = link.url | split: '/' | last %}
+        {% assign linked_collection = collections[link_handle] %}
+        {% if linked_collection %}
+          {% assign custom_label = linked_collection.metafields.custom.custom_menu_label %}
+          {% assign label = custom_label | default: linked_collection.title %}
+        {% else %}
+          {% assign label = link.title %}
+        {% endif %}
+        <li>
+          <a 
+            href="{{ link.url }}" 
+            class="{% if link_handle == collection.handle %}collection-links__link-active{% endif %}">
+            {{ label }}
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endif %}
+
+{% schema %}
+{
+  "name": "Collection sub menu",
+  "class": "collection-submenu-block",
+  "settings": [
+  ],
+   "presets": [
+    {
+      "name": "Collection sub menu"
+    }
+  ]
+}
+{% endschema %}

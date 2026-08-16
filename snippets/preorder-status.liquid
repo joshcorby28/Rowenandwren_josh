@@ -1,0 +1,47 @@
+{%- doc -%}
+  Pre-order status for a variant.
+
+  Outputs a human-readable pre-order date label (e.g. "early July") when the
+  given variant is in a pre-order state, and nothing at all otherwise. Callers
+  should `capture` the output, `strip` it, and treat a blank result as "not a
+  pre-order".
+
+  Pre-order state uses the custom inventory model carried over from the legacy
+  theme, stored in the legacy `global` metafield namespace:
+
+    - global.onhandstock   == 0   -> nothing available to ship right now
+    - global.futurestock   >  0   -> more stock is inbound
+    - global.earliestpodate is set -> the earliest expected dispatch date
+
+  The date bucketing matches the legacy theme exactly:
+    day 1-10  -> "early {Month}"
+    day 11-20 -> "mid {Month}"
+    else      -> "end {Month}"
+
+  @param {object} variant - The product variant to evaluate.
+
+  @example
+    {%- capture preorder_date -%}
+      {%- render 'preorder-status', variant: product.selected_or_first_available_variant -%}
+    {%- endcapture -%}
+    {%- assign preorder_date = preorder_date | strip -%}
+    {%- if preorder_date != blank -%} ...pre-order... {%- endif -%}
+{%- enddoc -%}
+
+{%- liquid
+  assign onhandstock = variant.metafields.global.onhandstock | plus: 0
+  assign futurestock = variant.metafields.global.futurestock | plus: 0
+  assign earliestpodate = variant.metafields.global.earliestpodate
+
+  if onhandstock == 0 and futurestock > 0 and earliestpodate != blank
+    assign day = earliestpodate | date: '%-d' | plus: 0
+    assign month = earliestpodate | date: '%B'
+    if day <= 10
+      echo 'early ' | append: month
+    elsif day <= 20
+      echo 'mid ' | append: month
+    else
+      echo 'end ' | append: month
+    endif
+  endif
+-%}

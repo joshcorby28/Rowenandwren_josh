@@ -1,0 +1,13 @@
+{%- doc -%}
+  A single, full-width upsell card.
+
+  @param {object} [upsell_image] - image metafield object
+  @param {string} [upsell_caption] - caption text
+  @param {string} [upsell_link] - destination URL (card becomes a link when present)
+{%- enddoc -%}
+
+{%- render 'article-upsell-item',
+  upsell_image: upsell_image,
+  upsell_caption: upsell_caption,
+  upsell_link: upsell_link
+-%}

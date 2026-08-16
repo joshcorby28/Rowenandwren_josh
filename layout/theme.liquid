@@ -1,0 +1,179 @@
+<!doctype html>
+<html
+  {% if request.design_mode %}
+    class="shopify-design-mode"
+  {% endif %}
+  lang="{{ request.locale.iso_code }}"
+>
+  <head>
+    {%- if settings.favicon != blank -%}
+      <link
+        rel="icon"
+        type="image/png"
+        href="{{ settings.favicon | image_url: width: 32, height: 32 }}"
+      >
+    {%- endif -%}
+
+    {% comment %} This a way to wait for main content to load when navigating to a new page so that the view transitions can work consistently {% endcomment %}
+    {% if settings.transition_to_main_product or settings.page_transition_enabled %}
+      <link
+        rel="expect"
+        href="#MainContent"
+        blocking="render"
+        id="view-transition-render-blocker"
+      >
+    {% endif %}
+    <link rel="stylesheet" href="https://use.typekit.net/dks0hcj.css">
+    {%- render 'meta-tags' -%}
+    {%- render 'stylesheets' -%}
+    {%- render 'fonts' -%}
+    {%- render 'scripts' -%}
+    {%- render 'theme-styles-variables' -%}
+    {%- render 'color-schemes' -%}
+
+    {% if request.design_mode %}
+      {%- render 'theme-editor' -%}
+    {% endif %}
+
+    {{ content_for_header }}
+    
+    {%- render 'cookie-consent' -%}
+
+    {%- if template.name == 'article' -%}
+      {% style %}
+        .article__header-background {
+          background-color: #645F4F;
+          background-color: {{ article.metafields.header.background_colour.value }};
+        }
+      {% endstyle %}
+    {%- endif -%}
+
+    <!-- Secondary product information -->
+    {% assign secondary_types = product.metafields.custom.secondary_product_type.value %}
+
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({
+        secondaryProductTypes: {
+          item_category2: {{ secondary_types[0] | json }},
+          item_category3: {{ secondary_types[1] | json }},
+          item_category4: {{ secondary_types[2] | json }},
+          item_category5: {{ secondary_types[3] | json }}
+        }
+      });
+    </script>
+    <!-- End secondary product information -->
+  </head>
+
+  <body class="template-{{ template.name | handle }} template-{{ template | handle }} page-width-{{ settings.page_width }} card-hover-effect-{{ settings.card_hover_effect }}">
+    {% render 'skip-to-content-link', href: '#MainContent', text: 'accessibility.skip_to_text' %}
+    <div id="header-group">
+      {% sections 'header-group' %}
+    </div>
+
+    <script>
+      // Inline header height and menu style calculations to prevent layout shift
+      // Note: Updates in calculateHeaderGroupHeight(), updateTransparentHeaderOffset() and setHeaderMenuStyle() utilities.js should be kept in sync with this function
+      (function setHeaderHeighCustomProperties() {
+        /*
+         * Header calculation functions for maintaining CSS variables
+         * Mimic calculateHeaderGroupHeight() in utilities.js
+         */
+        const header = document.querySelector('header-component');
+        const headerGroup = document.querySelector('#header-group');
+        const hasHeaderSection = headerGroup?.querySelector('.header-section');
+
+        if (!header || !headerGroup) return;
+
+        const headerTopRow = header.querySelector('.header__row--top');
+        // Use the header's declared height (--header__height, set inline by the
+        // header section) instead of header.offsetHeight. This custom header can
+        // measure ~21px taller than its settled height at first paint (before its
+        // own styles apply), which made --header-group-height — and the
+        // transparent-header hero sized from it — shift down after load. The
+        // declared value is stable from first paint, so the hero no longer jolts.
+        const declaredHeaderHeight = parseFloat(
+          getComputedStyle(document.documentElement).getPropertyValue('--header__height')
+        );
+        const headerHeight = declaredHeaderHeight || header.offsetHeight;
+
+        // Calculate the total height of the header group
+        let headerGroupHeight = 0;
+        const children = headerGroup.children;
+        for (let i = 0; i < children.length; i++) {
+          const element = children[i];
+          if (element === header || !(element instanceof HTMLElement)) continue;
+          headerGroupHeight += element.offsetHeight;
+        }
+
+        // Check for transparent header special case. At desktop on the product
+        // template we suppress the transparent layout in CSS (see header.liquid
+        // <style> block), so skip the workaround here too — otherwise we
+        // double-count the header height (.header-section wrapper is in-flow).
+        const isTransparentActive =
+          header.hasAttribute('transparent') &&
+          !(document.body.classList.contains('template-product') && window.matchMedia('(min-width: 750px)').matches);
+        if (isTransparentActive && header.parentElement?.nextElementSibling) {
+          headerGroupHeight += headerHeight;
+        }
+
+        // Set CSS variables
+        document.body.style.setProperty('--header-height', `${headerHeight}px`);
+        document.body.style.setProperty('--header-group-height', `${headerGroupHeight}px`);
+
+        if (headerTopRow) {
+          window.requestAnimationFrame(function () {
+            document.body.style.setProperty('--top-row-height', `${headerTopRow.offsetHeight}px`);
+          });
+        }
+
+        /**
+         * Updates CSS custom properties for transparent header offset calculation
+         * Mimic updateTransparentHeaderOffset() in utilities.js
+         */
+
+        if (!hasHeaderSection || !isTransparentActive) {
+          document.body.style.setProperty('--transparent-header-offset-boolean', '0');
+          return;
+        }
+
+        const hasImmediateSection = hasHeaderSection.nextElementSibling?.classList.contains('shopify-section');
+
+        const shouldApplyOffset = !hasImmediateSection ? '1' : '0';
+        document.body.style.setProperty('--transparent-header-offset-boolean', shouldApplyOffset);
+      })();
+
+      (function setHeaderMenuStyle() {
+        const headerComponent = document.querySelector('#header-component');
+        if (headerComponent) {
+          const isTouchDevice = 'ontouchstart' in window && navigator.maxTouchPoints > 0;
+          const overflowList = headerComponent?.querySelector('overflow-list');
+          const hasReachedMinimum = overflowList && overflowList.hasAttribute('minimum-reached');
+          headerComponent.dataset.menuStyle = isTouchDevice || hasReachedMinimum ? 'drawer' : 'menu';
+        }
+      })();
+    </script>
+
+    <main
+      id="MainContent"
+      class="content-for-layout"
+      role="main"
+      data-page-transition-enabled="{{ settings.page_transition_enabled }}"
+      data-product-transition="{{ settings.transition_to_main_product }}"
+      data-template="{{ template }}"
+    >
+      {{ content_for_layout }}
+    </main>
+
+    <footer>
+      {% sections 'footer-group' %}
+    </footer>
+
+    {% render 'search-modal' %}
+
+    {% if settings.quick_add or settings.mobile_quick_add %}
+      {% render 'quick-add-modal' %}
+    {% endif %}
+    <script src="{{ 'global-e-shim.js' | asset_url }}" defer></script>
+  </body>
+</html>

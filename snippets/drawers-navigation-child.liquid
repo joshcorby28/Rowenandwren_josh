@@ -1,0 +1,286 @@
+{%- doc -%}
+  Recursive menu-drawer snippet ported from the old theme's `drw-Nav` markup
+  onto the new theme's `<header-drawer>` JS hooks (`on:click="/open/submenu"`,
+  `/back`, `/close`).
+
+  At level 1 it renders the primary nav body (items, optional secondary
+  linklist, socials). At deeper levels it renders a sliding panel
+  (`.menu-drawer__submenu`) with header + BACK + items + CTA cards.
+
+  @param {object} link - Linklist or link to render
+  @param {number} level - Depth (1 for the root call)
+  @param {object} [section] - Section context (not used for block lookups
+    anymore — kept for future use / forward compatibility)
+  @param {object} [secondary_linklist] - Linklist rendered under the primary
+    nav at level 1
+  @param {string} [mobile_menu_extras] - Pre-rendered Lookbook cards +
+    submenu buttons HTML for every submenu, delimited by
+    `<!--mm:<handle>-->...<!--mm-end:<handle>-->` markers. Built upstream
+    in `blocks/_header-menu.liquid` because snippets can't call
+    `{% content_for %}` directly in Horizon.
+  @param {string} [parent_key] - Internal: parent submenu handle, used to
+    namespace nested ids
+{%- enddoc -%}
+
+{%- liquid
+  assign is_submenu = false
+  if level > 1
+    assign is_submenu = true
+  endif
+
+  capture close_icon
+    echo '<svg width="16px" height="17px" viewBox="0 0 16 17" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" stroke-linecap="square"><g id="Group" transform="translate(1.182860, 1.682690)" stroke="#717171"><line x1="13.63428" y1="0.00034" x2="0" y2="13.63462"></line><line x1="3e-05" y1="0" x2="13.63428" y2="13.63432"></line></g></g></svg>'
+  endcapture
+
+  capture arrow_left
+    echo '<svg viewBox="0 0 7 11" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 0.5L1.5 5.5L6.5 10.5" stroke="#717171"/></svg>'
+  endcapture
+
+  capture arrow_right
+    echo '<svg viewBox="0 0 7 11" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0.5 0.5L5.5 5.5L0.5 10.5" stroke="#717171"/></svg>'
+  endcapture
+-%}
+
+{%- if is_submenu -%}
+  <header class="drw-Drawer_Header">
+    <button
+      class="drw-Drawer_Back fz-11_14"
+      type="button"
+      aria-expanded="true"
+      on:click="header-drawer/back"
+    >
+      {{ arrow_left }}
+      <span class="drw-Drawer_BackLabel">
+        {{ 'actions.back' | t | default: 'Back' }}
+      </span>
+    </button>
+    <button
+      class="drw-Drawer_Icon drw-Drawer_Icon-close"
+      type="button"
+      aria-label="{{ 'actions.close' | t }}"
+      on:click="header-drawer/close"
+    >
+      {{ close_icon }}
+    </button>
+  </header>
+{%- endif -%}
+
+<nav class="drw-Nav{% if is_submenu %} drw-Nav-inSubmenu{% endif %}">
+  <ul class="drw-Nav_Items">
+    {%- if is_submenu -%}
+      <li class="drw-Nav_Item">
+        <a class="drw-Nav_ItemTitle" href="{{ link.url }}">
+          {{ link.title }}
+        </a>
+      </li>
+    {%- endif -%}
+
+    {%- for child_link in link.links -%}
+      {%- liquid
+        assign has_children = false
+        if child_link.links != blank
+          assign has_children = true
+        endif
+
+        assign next_level = level | plus: 1
+        assign submenu_key = child_link.handle | append: '-' | append: level
+      -%}
+
+      <li class="drw-Nav_Item {%- if has_children %} drw-Nav_Item-hasChild {%- endif %}">
+        {%- if has_children -%}
+          <details
+            class="drw-Nav_Details"
+            id="DrwNav-{{ parent_key | default: 'menu' }}-{{ submenu_key }}"
+          >
+            <summary
+              class="drw-Nav_Summary"
+              {% if child_link.active %}aria-current="page"{% endif %}
+              on:click="header-drawer/open/submenu"
+            >
+              <a
+                class="drw-Nav_Link"
+                href="{{ child_link.url }}"
+                title="{{ child_link.title | escape }}"
+              >
+                {{ child_link.title }}
+              </a>
+              <span
+                class="drw-Nav_Button {%- if is_submenu %} drw-Nav_Button-secondary {%- endif %} fz-11_14"
+                aria-hidden="true"
+              >
+                {{ arrow_right }}
+              </span>
+            </summary>
+
+            <div
+              class="menu-drawer__submenu drw-Drawer drw-Drawer-fromLeft"
+              tabindex="-1"
+            >
+              {%- render 'drawers-navigation-child',
+                link: child_link,
+                level: next_level,
+                section: section,
+                mobile_menu_extras: mobile_menu_extras,
+                parent_key: submenu_key
+              -%}
+            </div>
+          </details>
+        {%- else -%}
+          <a
+            class="drw-Nav_Link {%- if is_submenu %} drw-Nav_Link-secondary {%- endif %} fz-11_14"
+            href="{{ child_link.url }}"
+            {% if child_link.active %}aria-current="page"{% endif %}
+          >
+            {{ child_link.title }}
+          </a>
+        {%- endif -%}
+      </li>
+    {%- endfor -%}
+  </ul>
+</nav>
+
+{%- comment -%}
+  Lookbook cards + submenu buttons. `mobile_menu_extras` is a single
+  capture of EVERY mobile-menu-cta / mobile-menu-button block, pre-
+  rendered in `blocks/_header-menu.liquid` via content_for. Each block
+  wraps its own output in `<!--mm-card:<own-handle>-->...<!--mm-card-end-->`
+  (or `<!--mm-btn:...-->`). Here we Liquid-split the pool on the start
+  marker for the CURRENT submenu's handle and emit only the chunks up
+  to the next end marker — so each submenu shows only the cards/buttons
+  whose own `submenu_title` matched it.
+
+  Using `split: start | offset: 1` walks every occurrence of the marker
+  (a merchant can attach more than one Lookbook card to the same
+  submenu).
+{%- endcomment -%}
+{%- if is_submenu and mobile_menu_extras != blank -%}
+  {%- assign submenu_handle = link.title | handleize -%}
+
+  {%- assign card_start = '<!--mm-card:' | append: submenu_handle | append: '-->' -%}
+  {%- assign card_end = '<!--mm-card-end-->' -%}
+  {%- assign btn_start = '<!--mm-btn:' | append: submenu_handle | append: '-->' -%}
+  {%- assign btn_end = '<!--mm-btn-end-->' -%}
+
+  {%- if mobile_menu_extras contains card_start -%}
+    <div class="drw-Nav_Cards" data-submenu="{{ submenu_handle }}">
+      <div class="drw-Nav_CardsItems">
+        {%- assign card_parts = mobile_menu_extras | split: card_start -%}
+        {%- for part in card_parts offset: 1 -%}
+          {{ part | split: card_end | first }}
+        {%- endfor -%}
+      </div>
+    </div>
+  {%- endif -%}
+
+  {%- if mobile_menu_extras contains btn_start -%}
+    <div class="drw-Nav_Buttons" data-submenu="{{ submenu_handle }}">
+      <div class="drw-Nav_ButtonsItems">
+        {%- assign btn_parts = mobile_menu_extras | split: btn_start -%}
+        {%- for part in btn_parts offset: 1 -%}
+          {{ part | split: btn_end | first }}
+        {%- endfor -%}
+      </div>
+    </div>
+  {%- endif -%}
+{%- endif -%}
+
+{%- if level == 1 and secondary_linklist -%}
+  <nav class="drw-Nav drw-Nav-secondary">
+    <ul class="drw-Nav_Items">
+      {%- for child_link in secondary_linklist.links -%}
+        <li class="drw-Nav_Item">
+          <a
+            class="drw-Nav_Link drw-Nav_Link-secondary fz-11_14"
+            href="{{ child_link.url }}"
+            {% if child_link.active %}aria-current="page"{% endif %}
+          >
+            {{ child_link.title }}
+          </a>
+        </li>
+      {%- endfor -%}
+    </ul>
+  </nav>
+{%- endif -%}
+
+{%- if level == 1 -%}
+  {%- liquid
+    assign social_accounts = 'Instagram, Pinterest, Facebook, Twitter' | split: ', '
+    assign any_social = false
+    for social in social_accounts
+      assign social_handle = social | handleize
+      capture social_link_key
+        echo 'social_'
+        echo social_handle
+        echo '_link'
+      endcapture
+      capture show_social_key
+        echo 'socials_show_'
+        echo social_handle
+      endcapture
+      if settings[social_link_key] != blank and settings[show_social_key]
+        assign any_social = true
+        break
+      endif
+    endfor
+  -%}
+
+  {%- if any_social -%}
+    <div class="drw-Nav_Socials">
+      {%- for social in social_accounts -%}
+        {%- liquid
+          assign social_handle = social | handleize
+          capture social_link_key
+            echo 'social_'
+            echo social_handle
+            echo '_link'
+          endcapture
+          capture show_social_key
+            echo 'socials_show_'
+            echo social_handle
+          endcapture
+          assign social_url = settings[social_link_key]
+          assign show_social = settings[show_social_key]
+        -%}
+
+        {%- if social_url != blank and show_social -%}
+          {%- case social_handle -%}
+            {%- when 'instagram' -%}
+              {%- assign icon_width = 15 -%}
+              {%- assign icon_height = 15 -%}
+            {%- when 'pinterest' -%}
+              {%- assign icon_width = 12 -%}
+              {%- assign icon_height = 15 -%}
+            {%- when 'facebook' -%}
+              {%- assign icon_width = 8 -%}
+              {%- assign icon_height = 15 -%}
+            {%- when 'twitter' -%}
+              {%- assign icon_width = 15 -%}
+              {%- assign icon_height = 13 -%}
+          {%- endcase -%}
+
+          <div class="drw-Nav_SocialsItem">
+            <a
+              class="drw-Nav_SocialsLink drw-Nav_SocialsLink-{{ social_handle }}"
+              href="{{ social_url }}"
+              aria-label="{{ social }}"
+              target="_blank"
+              rel="noopener"
+              style="--icon-width: {{ icon_width }}px; --icon-height: {{ icon_height }}px;"
+            >
+              {%- case social_handle -%}
+                {%- when 'instagram' -%}
+                  <svg viewBox="0 0 15 15" xmlns="http://www.w3.org/2000/svg"><g transform="translate(-1193 -76)" fill="none" fill-rule="evenodd"><path d="M1200.5 76c-2.037 0-2.292.01-3.092.045-.799.038-1.342.163-1.82.349a3.673 3.673 0 00-1.33.865 3.66 3.66 0 00-.864 1.328c-.186.479-.312 1.022-.349 1.821-.037.8-.045 1.054-.045 3.092 0 2.037.01 2.292.045 3.092.038.798.163 1.342.349 1.82.191.493.448.912.865 1.33.417.415.835.674 1.329.864.478.185 1.022.312 1.82.349.8.037 1.055.045 3.092.045 2.038 0 2.292-.01 3.092-.045.798-.038 1.342-.164 1.82-.349a3.686 3.686 0 001.33-.865c.416-.417.674-.834.864-1.329.185-.478.312-1.022.35-1.82.037-.8.044-1.055.044-3.092 0-2.038-.01-2.292-.045-3.092-.037-.798-.164-1.343-.349-1.82a3.681 3.681 0 00-.865-1.33 3.654 3.654 0 00-1.328-.864c-.479-.186-1.023-.312-1.821-.349-.8-.038-1.054-.045-3.092-.045zm0 1.35c2.002 0 2.24.01 3.031.044.732.035 1.128.156 1.392.26.351.135.6.298.864.56.262.262.424.512.56.863.102.264.225.66.258 1.392.036.791.044 1.029.044 3.031 0 2.002-.01 2.24-.046 3.031-.039.731-.16 1.128-.264 1.392-.14.351-.299.6-.561.864a2.34 2.34 0 01-.863.56c-.262.102-.666.225-1.397.258-.796.036-1.03.044-3.037.044-2.007 0-2.24-.01-3.037-.047-.731-.038-1.135-.16-1.397-.263-.356-.14-.6-.299-.862-.562a2.277 2.277 0 01-.562-.862c-.104-.263-.225-.666-.263-1.397-.028-.787-.038-1.03-.038-3.027 0-1.998.01-2.242.038-3.039.038-.73.16-1.133.263-1.396.13-.356.299-.6.562-.863.262-.262.506-.43.862-.561.262-.104.657-.226 1.388-.263.797-.028 1.031-.038 3.037-.038l.028.019zm0 2.299a3.851 3.851 0 100 7.702 3.851 3.851 0 000-7.702zm0 6.351a2.5 2.5 0 11-.001-4.999A2.5 2.5 0 011200.5 86zm4.904-6.503a.9.9 0 11-1.801-.001.9.9 0 011.8 0z" fill="currentColor" fill-rule="nonzero"/></g></svg>
+                {%- when 'pinterest' -%}
+                  <svg viewBox="0 0 12 15" xmlns="http://www.w3.org/2000/svg"><path d="M.001 5.33C.001 2.035 3.019 0 6.072 0c2.804 0 5.357 1.929 5.357 4.884 0 2.777-1.42 5.857-4.58 5.857-.75 0-1.696-.375-2.063-1.071-.679 2.688-.625 3.089-2.125 5.143l-.125.045-.08-.089c-.054-.563-.134-1.116-.134-1.679 0-1.821.839-4.455 1.25-6.223-.223-.455-.286-1.009-.286-1.509 0-.902.625-2.045 1.643-2.045.75 0 1.152.571 1.152 1.277 0 1.161-.786 2.25-.786 3.375 0 .768.634 1.304 1.375 1.304 2.054 0 2.688-2.964 2.688-4.545 0-2.116-1.5-3.268-3.527-3.268-2.357 0-4.179 1.696-4.179 4.089 0 1.152.705 1.741.705 2.018 0 .232-.17 1.054-.464 1.054-.045 0-.107-.018-.152-.027C.464 8.206 0 6.501 0 5.331l.001-.001z" fill="currentColor" fill-rule="nonzero"/></svg>
+                {%- when 'facebook' -%}
+                  <svg viewBox="0 0 8 15" xmlns="http://www.w3.org/2000/svg"><path d="M5.191 14.545V7.912h2.358l.355-2.585h-2.71v-1.65c0-.748.22-1.26 1.356-1.26H8V.103A20.74 20.74 0 005.886 0c-2.09 0-3.522 1.205-3.522 3.418v1.906H0v2.585h2.364v6.636h2.827z" fill="currentColor" fill-rule="nonzero"/></svg>
+                {%- when 'twitter' -%}
+                  <svg viewBox="0 0 23 20" xmlns="http://www.w3.org/2000/svg"><path d="M21.96 3.905a8.437 8.437 0 0 1-2.353.636 4.079 4.079 0 0 0 1.802-2.233 8.552 8.552 0 0 1-2.606.97A4.113 4.113 0 0 0 15.811 2c-2.264 0-4.1 1.807-4.1 4.033 0 .32.038.627.106.922a11.675 11.675 0 0 1-8.45-4.205 3.908 3.908 0 0 0-.555 2.03 4.02 4.02 0 0 0 1.823 3.36 4.137 4.137 0 0 1-1.857-.505v.05c0 1.956 1.411 3.588 3.288 3.96a4.226 4.226 0 0 1-1.843.069 4.106 4.106 0 0 0 3.837 2.803 8.307 8.307 0 0 1-5.085 1.726A8.84 8.84 0 0 1 2 16.188 11.798 11.798 0 0 0 8.297 18c7.545 0 11.666-6.148 11.666-11.472 0-.171 0-.344-.013-.516A8.21 8.21 0 0 0 22 3.922l-.04-.017z" fill="currentColor" fill-rule="nonzero"/></svg>
+              {%- endcase -%}
+            </a>
+          </div>
+        {%- endif -%}
+      {%- endfor -%}
+    </div>
+  {%- endif -%}
+{%- endif -%}

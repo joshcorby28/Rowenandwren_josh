@@ -1,0 +1,374 @@
+{% comment %}
+  Back in Stock waiting-list form.
+
+  Ports the inline "Enter Email Address + Join Waiting List" design from the
+  old (Vintage) theme into the new Shopify 2.0 (Horizon) theme.
+
+  Submissions are powered by the "Amp: Back in Stock" app, which is already
+  installed on the store as a store-wide app embed. Rather than opening Amp's
+  popup, this form submits inline via Amp's JavaScript API:
+
+    BIS.create(email, variantId, productId) -> Promise
+
+  so it behaves like the old theme's inline waiting-list form.
+
+  The block only renders when the selected variant is unavailable, unless
+  "Always show (preview)" is enabled in the theme editor, or the product's
+  `back_in_stock.force_enable` metafield is set to 'true' (per-product override,
+  used e.g. for always-available made-to-order / upholstery products).
+{% endcomment %}
+
+{%- liquid
+  assign block_settings = block.settings
+  assign product = closest.product
+  assign variant = product.selected_or_first_available_variant
+
+  assign show_form = false
+  if block_settings.always_show
+    assign show_form = true
+  elsif product.metafields.back_in_stock.force_enable == 'true'
+    assign show_form = true
+  elsif variant == null
+    assign show_form = true
+  elsif variant.available == false
+    assign show_form = true
+  endif
+-%}
+
+{%- if show_form -%}
+  <form
+    class="prd-BackInStock spacing-style"
+    style="{% render 'spacing-style', settings: block_settings %}"
+    action="#"
+    novalidate
+    data-back-in-stock
+    data-product-id="{{ product.id }}"
+    {{ block.shopify_attributes }}
+  >
+    {%- if block_settings.intro != blank -%}
+      <p class="prd-BackInStock_Message">
+        {{ block_settings.intro }}
+      </p>
+    {%- endif -%}
+
+    <label class="visually-hidden" for="BackInStockEmail-{{ block.id }}">
+      {{ block_settings.placeholder | default: 'Enter Email Address' }}
+    </label>
+    <input
+      type="email"
+      id="BackInStockEmail-{{ block.id }}"
+      class="prd-BackInStockInput"
+      placeholder="{{ block_settings.placeholder | default: 'Enter Email Address' }}"
+      autocomplete="email"
+      autocapitalize="off"
+      autocorrect="off"
+      required
+      data-back-in-stock-email
+    >
+
+    <button
+      type="submit"
+      class="prd-BackInStockButton"
+      {% if variant %}data-variant-id="{{ variant.id }}"{% endif %}
+    >
+      {{ block_settings.button_label | default: 'Join Waiting List' }}
+    </button>
+
+    <div
+      class="prd-BackInStockValidation"
+      role="status"
+      aria-live="polite"
+      data-back-in-stock-message
+      hidden
+    ></div>
+  </form>
+
+  <script>
+    (function () {
+      var strings = {
+        success: {{ 'Thanks! We will email you when this is back in stock.' | json }},
+        error: {{ 'Sorry, something went wrong. Please try again.' | json }},
+        unavailable: {{ 'The notification service is still loading. Please try again in a moment.' | json }}
+      };
+
+      function showMessage(form, text) {
+        var message = form.querySelector('[data-back-in-stock-message]');
+        if (!message) return;
+        message.textContent = text;
+        message.hidden = false;
+        message.classList.add('is-visible');
+      }
+
+      function submitSignup(form) {
+        var emailInput = form.querySelector('[data-back-in-stock-email]');
+        var button = form.querySelector('.prd-BackInStockButton');
+
+        var email = (emailInput && emailInput.value || '').trim();
+        if (!email || (emailInput.checkValidity && !emailInput.checkValidity())) {
+          if (emailInput && emailInput.reportValidity) emailInput.reportValidity();
+          return;
+        }
+
+        var variantId = button && button.getAttribute('data-variant-id');
+        var productId = form.getAttribute('data-product-id');
+
+        // Amp: Back in Stock exposes a global `BIS` from its store-wide app embed.
+        if (typeof window.BIS === 'undefined' || typeof window.BIS.create !== 'function') {
+          showMessage(form, strings.unavailable);
+          return;
+        }
+
+        if (button) button.disabled = true;
+
+        function done(resp) {
+          if (button) button.disabled = false;
+          if (resp && resp.status === 'OK') {
+            showMessage(form, resp.msg || strings.success);
+            if (emailInput) emailInput.value = '';
+          } else {
+            showMessage(form, (resp && (resp.msg || resp.status)) || strings.error);
+          }
+        }
+
+        function fail() {
+          if (button) button.disabled = false;
+          showMessage(form, strings.error);
+        }
+
+        try {
+          var request = window.BIS.create(email, variantId, productId);
+          if (request && typeof request.then === 'function') {
+            request.then(done);
+            if (typeof request.catch === 'function') request.catch(fail);
+          }
+        } catch (e) {
+          fail();
+        }
+      }
+
+      // Bind global listeners once, no matter how many blocks render.
+      if (!window.__bisInlineBound) {
+        window.__bisInlineBound = true;
+
+        // Mouse: intercept the click in the CAPTURE phase, before Amp's embed
+        // (which auto-attaches its popup to out-of-stock product buttons) can
+        // see it. stopImmediatePropagation prevents Amp's handler from firing.
+        document.addEventListener(
+          'click',
+          function (event) {
+            var button = event.target.closest && event.target.closest('.prd-BackInStockButton');
+            if (!button) return;
+            var form = button.closest('[data-back-in-stock]');
+            if (!form) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            submitSignup(form);
+          },
+          true
+        );
+
+        // Keyboard: pressing Enter in the field fires a native submit (no click,
+        // so Amp is not involved) — handle it the same way.
+        document.addEventListener('submit', function (event) {
+          var form = event.target;
+          if (!form.matches || !form.matches('[data-back-in-stock]')) return;
+          event.preventDefault();
+          submitSignup(form);
+        });
+      }
+    })();
+  </script>
+{%- endif -%}
+
+{% stylesheet %}
+  .prd-BackInStock {
+    --bis-grey: var(--color-input-background, #f0f0f0);
+    --bis-brand: var(--color-primary, #717171);
+    --bis-border: var(--color-border, rgba(0, 0, 0, 0.1));
+
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-block: 0;
+  }
+
+  @media (min-width: 768px) {
+    .prd-BackInStock {
+      grid-template-columns: 1fr 160px;
+      row-gap: 20px;
+    }
+  }
+
+  .prd-BackInStock_Message {
+    grid-column: 1 / -1;
+    margin: 0;
+  }
+
+  .prd-BackInStockInput {
+    width: 100%;
+    height: 46px;
+    padding: 12px 15px;
+    font-size: 0.8125rem;
+    line-height: 1.375rem;
+    letter-spacing: 0.01875rem;
+    color: var(--bis-brand);
+    background-color: #f0f0f0 !important;
+    border: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    outline: 0;
+  }
+
+  .prd-BackInStockInput::placeholder {
+    color: var(--bis-brand);
+    opacity: 1;
+  }
+
+  .prd-BackInStockInput {
+    height: 46px;
+    padding: 0;
+    color: var(--bis-brand);
+    border: 0;
+    border-radius: 0;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    padding: 12px 15px;
+  }
+
+  .prd-BackInStockButton:hover,
+  .prd-BackInStockButton:focus {
+    color: var(--color-background, #fff);
+    background-color: var(--bis-brand);
+  }
+
+  .prd-BackInStockButton:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  .prd-BackInStockValidation {
+    grid-column: 1 / -1;
+    display: none;
+    padding: 5px 12px;
+    font-size: 0.8125rem;
+    line-height: 1.375rem;
+    color: var(--bis-brand);
+    background-color: var(--bis-grey);
+  }
+
+  .prd-BackInStockValidation.is-visible {
+    display: block;
+  }
+
+  button.prd-BackInStockButton {
+    background-color: #fff;
+    border-color: #717171;
+    color: #717171;
+    font-family: var(--button-font-family-primary);
+    font-size: .6875rem;
+    font-weight: 400;
+    letter-spacing: .0625rem;
+    line-height: .875rem;
+    border-width: 1px;
+    text-transform: uppercase;
+  }
+
+  button.prd-BackInStockButton:hover {
+    background-color: #717171;
+    border-color: #717171;
+    color: #ffffff;
+  }
+
+  .product-details:has(.prd-BackInStock) .buy-buttons-block,
+  .product-details:has(.prd-BackInStock) .product__pickup-availabilities {
+    display: none;
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Back in stock",
+  "tag": null,
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Shows an inline waiting-list form when the selected variant is out of stock. Signups are handled by the Amp: Back in Stock app (its popup opens on click)."
+    },
+    {
+      "type": "text",
+      "id": "intro",
+      "label": "Intro text"
+    },
+    {
+      "type": "text",
+      "id": "placeholder",
+      "label": "Email field placeholder",
+      "default": "Enter Email Address"
+    },
+    {
+      "type": "text",
+      "id": "button_label",
+      "label": "Button label",
+      "default": "Join Waiting List"
+    },
+    {
+      "type": "checkbox",
+      "id": "always_show",
+      "label": "Always show (preview)",
+      "info": "Ignore stock status and always render the form. Useful for styling in the theme editor.",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "Padding"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "Top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "Bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start",
+      "label": "Left",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end",
+      "label": "Right",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    }
+  ],
+  "presets": [
+    {
+      "name": "Back in stock",
+      "category": "Product"
+    }
+  ]
+}
+{% endschema %}

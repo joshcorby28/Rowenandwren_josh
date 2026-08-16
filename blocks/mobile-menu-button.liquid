@@ -1,0 +1,51 @@
+{%- doc -%}
+  Self-rendering theme block for the mobile menu drawer's grey CTA
+  button.
+
+  Invoked from `blocks/_header-menu.liquid` (mobile variant) via
+  `{% content_for 'block' %}`. Always renders, wrapped in
+  `<!--mm-btn:<own-handle>-->...<!--mm-btn-end-->` markers. The snippet
+  downstream extracts the chunks matching the active submenu.
+{%- enddoc -%}
+
+{%- assign mm_handle = block.settings.submenu_title | handleize -%}
+<!--mm-btn:{{ mm_handle }}-->
+<a
+  href="{{ block.settings.link }}"
+  class="btn-Button btn-Button-grey"
+  {{ block.shopify_attributes }}
+>
+  {{ block.settings.link_text }}
+</a>
+<!--mm-btn-end-->
+
+{% schema %}
+{
+  "name": "Menu — Submenu button",
+  "tag": null,
+  "settings": [
+    {
+      "type": "text",
+      "id": "submenu_title",
+      "label": "Submenu title",
+      "info": "Must match a tier-1 submenu, e.g. Garden"
+    },
+    {
+      "type": "text",
+      "id": "link_text",
+      "label": "Link text"
+    },
+    {
+      "type": "url",
+      "id": "link",
+      "label": "Link"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Menu — Submenu button",
+      "category": "Mobile menu"
+    }
+  ]
+}
+{% endschema %}

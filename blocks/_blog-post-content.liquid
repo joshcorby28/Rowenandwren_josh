@@ -1,0 +1,149 @@
+{% style %}
+.art-Sharing {align-items:center; flex-direction:column; justify-content:center; display:flex; margin-bottom:10px; }
+.art-Sharing_Title { margin-bottom:15px; font-family:var(--Font_Family-body); font-weight:400; color:var(--color__body); text-transform: uppercase; font-size: .75rem; letter-spacing: .0625rem; line-height: 1.25rem; }
+.art-Sharing_Items { flex-wrap:wrap; justify-content:center; display:flex; list-style: none; margin:0; padding:0; }
+.art-Sharing_Item { margin-right:20px; }
+.art-Sharing_Item:last-child { margin-right:0; }
+.art-Sharing_Link { display:block; }
+.art-Sharing_Icon { display:block; width:18px; height:18px; }
+.art-Sharing_Icon svg { width:100%; height:100%; fill: #717171;}
+.art-Sharing_Text{ display:none; }
+.art-Article_Back { margin: 0 auto 20px; text-align: center; }
+.art-DoubleUpsell {
+  grid-gap: 10px;
+  grid-template-columns: repeat(2,1fr);
+  display: grid;
+  margin-top: 30px;
+  margin-bottom: 30px
+}
+
+@media (min-width: 750px) {
+  .art-DoubleUpsell {
+    margin-top:40px;
+    margin-bottom: 40px
+  }
+}
+{% endstyle %}
+
+<div class="blog-post-content rte">
+  <div class="blog-post-content__inner">
+    <rte-formatter>
+      {{ article.content }}
+    </rte-formatter>
+  </div>
+</div>
+
+<div class="art-Sharing">
+  <h2 class="art-Sharing_Title fz-12_20">Share</h2>
+
+  <ul class="art-Sharing_Items">
+    {%- if settings.share_pinterest != blank -%}
+      <li class="art-Sharing_Item art-Sharing_Item-pinterest">
+        <a
+          class="art-Sharing_Link"
+          href="//pinterest.com/pin/create/button/?url={{ shop.url | append: share_permalink }}&amp;media={{ share_image | img_url: '1024x1024' }}&amp;description={{ share_title | url_param_escape }}"
+          title="Pinterest"
+          target="_blank"
+          onclick="GAShare('Pinterest', 'article', `{{ article.title }}`)"
+        >
+          <span class="art-Sharing_Icon">
+            <svg viewBox="0 0 12 15" xmlns="http://www.w3.org/2000/svg"><path d="M.001 5.33C.001 2.035 3.019 0 6.072 0c2.804 0 5.357 1.929 5.357 4.884 0 2.777-1.42 5.857-4.58 5.857-.75 0-1.696-.375-2.063-1.071-.679 2.688-.625 3.089-2.125 5.143l-.125.045-.08-.089c-.054-.563-.134-1.116-.134-1.679 0-1.821.839-4.455 1.25-6.223-.223-.455-.286-1.009-.286-1.509 0-.902.625-2.045 1.643-2.045.75 0 1.152.571 1.152 1.277 0 1.161-.786 2.25-.786 3.375 0 .768.634 1.304 1.375 1.304 2.054 0 2.688-2.964 2.688-4.545 0-2.116-1.5-3.268-3.527-3.268-2.357 0-4.179 1.696-4.179 4.089 0 1.152.705 1.741.705 2.018 0 .232-.17 1.054-.464 1.054-.045 0-.107-.018-.152-.027C.464 8.206 0 6.501 0 5.331l.001-.001z" fill-rule="nonzero"/></svg>
+          </span>
+
+          <span class="art-Sharing_Text">
+            Pinterest
+          </span>
+        </a>
+      </li>
+    {%- endif -%}
+
+    {%- if settings.share_facebook != blank -%}
+      <li class="art-Sharing_Item">
+        <a
+          class="art-Sharing_Link"
+          href="//www.facebook.com/sharer.php?u={{ shop.url | append: share_permalink }}"
+          title="Facebook"
+          target="_blank"
+          onclick="GAShare('Facebook', 'article', `{{ article.title }}`)"
+        >
+          <span class="art-Sharing_Icon">
+            <svg viewBox="0 0 8 15" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M5.191 14.545V7.912h2.358l.355-2.585h-2.71v-1.65c0-.748.22-1.26 1.356-1.26H8V.103A20.74 20.74 0 005.886 0c-2.09 0-3.522 1.205-3.522 3.418v1.906H0v2.585h2.364v6.636h2.827z"
+                  fill-rule="nonzero"
+                />
+            </svg>
+          </span>
+
+          <span class="art-Sharing_Text">
+            Facebook
+          </span>
+        </a>
+      </li>
+    {%- endif -%}
+
+    {%- if settings.share_twitter != blank -%}
+      <li class="art-Sharing_Item art-Sharing_Item-twitter">
+        <a
+          class="art-Sharing_Link"
+          href="//twitter.com/share?text={{ share_title | url_param_escape }}&amp;url={{ shop.url | append: share_permalink }}"
+          title="Twitter"
+          target="_blank"
+          onclick="GAShare('Twitter', 'article', `{{ article.title }}`)"
+        >
+          <span class="art-Sharing_Icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" class="icon"><path fill="currentColor" d="M19.551 4.208q-.815 1.202-1.956 2.038 0 .082.02.255t.02.255q0 1.589-.469 3.179t-1.426 3.036-2.272 2.567-3.158 1.793-3.963.672q-3.301 0-6.031-1.773.571.041.937.041 2.751 0 4.911-1.671-1.284-.02-2.292-.784T2.456 11.85q.346.082.754.082.55 0 1.039-.163-1.365-.285-2.262-1.365T1.09 7.918v-.041q.774.408 1.773.448-.795-.53-1.263-1.396t-.469-1.864q0-1.019.509-1.997 1.487 1.854 3.596 2.924T9.81 7.184q-.143-.509-.143-.897 0-1.63 1.161-2.781t2.832-1.151q.815 0 1.569.326t1.284.917q1.345-.265 2.506-.958-.428 1.386-1.732 2.18 1.243-.163 2.262-.611z"/></svg>
+          </span>
+
+          <span class="art-Sharing_Text">
+            Twitter
+          </span>
+        </a>
+      </li>
+    {%- endif -%}
+  </ul>
+</div>
+
+<div class="art-Article_Back">
+  <a href="{{ blog.url }}" class="art-Article_BackButton link">Back to all article</a>
+</div>
+
+
+{% stylesheet %}
+  .blog-post-content {
+    grid-template-columns: repeat(12, 1fr);
+    display: grid;
+    grid-column-gap: 30px;
+    column-gap: 30px;
+    padding-top: 50px;
+    margin: 0 auto 60px;
+  }
+
+  .blog-post-content__inner {
+    grid-column: 3 / span 8;
+  }
+
+  @media screen and (max-width: 749px) { 
+    .blog-post-content__inner {
+      grid-column: span 12;
+    }
+  }
+
+  .art-Sharing_Icon {
+    display: block;
+    width: 18px;
+    height: 18px;
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:names.content",
+  "settings": [],
+  "presets": [
+    {
+      "name": "t:names.content"
+    }
+  ]
+}
+{% endschema %}

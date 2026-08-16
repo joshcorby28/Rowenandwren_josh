@@ -1,0 +1,503 @@
+{%- comment -%}
+  Order free fabric swatches — collection page.
+
+  Inline, full-page port of the `request-swatches` product-page drawer. Renders
+  the grouped fabric samples from the `fabric_groups` metaobject (handle
+  `fabric-groups-main`), matched against the products in the
+  `order-free-fabric-swatches` collection, and lets the customer pick up to six
+  free swatches and add them to the cart in one batched request.
+
+  Reuses the EXISTING data setup — no product, collection or metafield changes.
+  The matching logic is kept in lockstep with `blocks/request-swatches.liquid`.
+
+  Assign this section's template (`collection.swatches.json`) to the
+  `order-free-fabric-swatches` collection in the admin. See
+  docs/fabric-swatches-collection.md.
+{%- endcomment -%}
+
+{%- liquid
+  assign swatches_collection = collections['order-free-fabric-swatches']
+  assign global_settings = shop.metaobjects.fabric_groups['fabric-groups-main']
+  assign component_id = 'CollectionSwatches-' | append: section.id
+-%}
+
+<swatch-collection-component
+  id="{{ component_id }}"
+  class="collection-swatches color-{{ section.settings.color_scheme }}"
+  data-section-id="{{ section.id }}"
+  style="--padding-block-start: {{ section.settings.padding-block-start }}px; --padding-block-end: {{ section.settings.padding-block-end }}px;{% if section.settings.enable_mobile_padding %} --padding-block-start-mobile: {{ section.settings.padding-block-start-mobile }}px; --padding-block-end-mobile: {{ section.settings.padding-block-end-mobile }}px;{% endif %}"
+>
+  <div class="collection-swatches__inner">
+    {%- if section.settings.intro != blank -%}
+      <p class="collection-swatches__intro">{{ section.settings.intro }}</p>
+    {%- endif -%}
+
+    <div class="collection-swatches__content">
+      {%- comment -%}
+        Loop/matching logic mirrors the old theme's proven collection.liquid:
+        groups come from `groups_list`, and the product title is composed as
+        "{last word}, {first word}" of `fabric.key`, with `fabric.keys` as a
+        fallback list. This is the authoritative match against the live data.
+      {%- endcomment -%}
+      {%- for group in global_settings.groups_list.value -%}
+        {%- assign group_count = 0 -%}
+        {%- assign group_title = group.title.value -%}
+        {%- assign group_description = group.description | metafield_tag -%}
+        {%- capture group_content -%}
+          {%- for fabric in global_settings.fabrics.value -%}
+            {%- assign fabric_group_val = fabric.group.value | strip -%}
+            {%- if fabric_group_val == group_title -%}
+              {%- assign modified_title = fabric.key.value | split: ' ' -%}
+              {%- assign modified_title_last = modified_title | last -%}
+              {%- assign modified_title_first = modified_title | first -%}
+              {%- assign composed_title = modified_title_last | append: ', ' | append: modified_title_first -%}
+              {%- assign found_item = swatches_collection.products | where: 'title', composed_title | first -%}
+
+              {%- if found_item == blank and fabric.keys.value != blank -%}
+                {%- for key in fabric.keys.value -%}
+                  {%- assign found_item = swatches_collection.products | where: 'title', key | first -%}
+                  {%- if found_item != blank -%}
+                    {%- break -%}
+                  {%- endif -%}
+                {%- endfor -%}
+              {%- endif -%}
+
+              {%- if found_item == blank -%}
+                {%- continue -%}
+              {%- endif -%}
+
+              {%- assign group_count = group_count | plus: 1 -%}
+              {%- assign sample_image = blank -%}
+              {%- if fabric.swatch.value != blank -%}
+                {%- assign sample_image = fabric.swatch.value -%}
+              {%- elsif found_item.featured_image != blank -%}
+                {%- assign sample_image = found_item.featured_image -%}
+              {%- endif -%}
+              {%- assign sample_variant = found_item.selected_or_first_available_variant -%}
+
+              <button
+                type="button"
+                class="collection-swatches__sample"
+                ref="samples[]"
+                data-variant-id="{{ sample_variant.id }}"
+                data-name="{{ fabric.name.value | escape }}"
+                {% if sample_image != blank %}data-image="{{ sample_image | image_url: width: 160 }}"{% endif %}
+                data-selected="false"
+                aria-pressed="false"
+                on:click="/toggleSample"
+              >
+                <span class="collection-swatches__sample-image">
+                  {%- if sample_image != blank -%}
+                    {{
+                      sample_image
+                      | image_url: width: 240
+                      | image_tag:
+                          widths: '120, 240',
+                          sizes: '120px',
+                          loading: 'lazy',
+                          alt: fabric.name.value
+                    }}
+                  {%- else -%}
+                    {{ 'product-1' | placeholder_svg_tag: 'collection-swatches__sample-placeholder-svg' }}
+                  {%- endif -%}
+                </span>
+                <span class="collection-swatches__sample-text">
+                  <span class="collection-swatches__sample-name">{{ fabric.name.value }}</span>
+                  {%- if fabric.byline.value != blank -%}
+                    <span class="collection-swatches__sample-byline">{{ fabric.byline.value }}</span>
+                  {%- endif -%}
+                  {%- if fabric.rub_count.value != blank -%}
+                    <span class="collection-swatches__sample-rub">Rub Count: {{ fabric.rub_count.value }}</span>
+                  {%- endif -%}
+                </span>
+                <span class="collection-swatches__sample-toggle" aria-hidden="true">
+                  <span class="collection-swatches__sample-toggle-add svg-wrapper">
+                    {{- 'icon-plus.svg' | inline_asset_content -}}
+                  </span>
+                  <span class="collection-swatches__sample-toggle-remove svg-wrapper">
+                    {{- 'icon-checkmark.svg' | inline_asset_content -}}
+                  </span>
+                </span>
+              </button>
+            {%- endif -%}
+          {%- endfor -%}
+        {%- endcapture -%}
+
+        {%- if group_count > 0 -%}
+          <div class="collection-swatches__group">
+            <div class="collection-swatches__group-title">{{ group_title }}</div>
+            {%- if group_description != blank -%}
+              <div class="collection-swatches__group-description">{{ group_description }}</div>
+            {%- endif -%}
+            <div class="collection-swatches__group-samples">{{ group_content }}</div>
+          </div>
+        {%- endif -%}
+      {%- endfor -%}
+    </div>
+  </div>
+
+  <footer class="collection-swatches__footer">
+    <div class="collection-swatches__footer-inner">
+      <div class="collection-swatches__selected" aria-label="Selected swatches">
+        {%- for i in (1..6) -%}
+          <div
+            class="collection-swatches__slot"
+            ref="slots[]"
+            data-index="{{ i }}"
+            data-filled="false"
+          >
+            <span class="collection-swatches__slot-placeholder" data-slot-placeholder>{{ i }}</span>
+          </div>
+        {%- endfor -%}
+      </div>
+
+      <button
+        type="button"
+        class="collection-swatches__add button button-primary"
+        ref="addButton"
+        on:click="/handleAddToCart"
+        disabled
+      >
+        {{ section.settings.add_button_label | default: 'Add to Basket' }}
+      </button>
+
+      <p
+        ref="errorMessage"
+        class="collection-swatches__error"
+        role="status"
+        aria-live="polite"
+      ></p>
+    </div>
+  </footer>
+</swatch-collection-component>
+
+<script type="module" src="{{ 'swatch-collection-component.js' | asset_url }}"></script>
+
+{% stylesheet %}
+  .collection-swatches {
+    display: block;
+    padding-block-start: var(--padding-block-start-mobile, var(--padding-block-start, 0));
+    padding-block-end: var(--padding-block-end-mobile, var(--padding-block-end, 0));
+    color: var(--color-foreground, #111);
+  }
+
+  @media screen and (min-width: 750px) {
+    .collection-swatches {
+      padding-block-start: var(--padding-block-start, 0);
+      padding-block-end: var(--padding-block-end, 0);
+    }
+  }
+
+  .collection-swatches__inner {
+    /* Leave room for the sticky footer so the last group isn't hidden behind it. */
+    padding-block-end: 140px;
+  }
+
+  .collection-swatches__intro {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 0 20px 40px;
+    text-align: center;
+    font-size: 0.8125rem;
+    font-weight: 300;
+    letter-spacing: 0.0375rem;
+    line-height: 1.3125rem;
+  }
+
+  .collection-swatches__content {
+    max-width: var(--page-width, 1200px);
+    margin: 0 auto;
+  }
+
+  .collection-swatches__group {
+    padding: 60px;
+    border-bottom: 1px solid #e6e6e6;
+  }
+
+  @media screen and (max-width: 749px) {
+    .collection-swatches__group {
+      padding: 40px 20px;
+    }
+  }
+
+  .collection-swatches__group:last-child {
+    border: 0;
+  }
+
+  .collection-swatches__group-title {
+    margin-block-end: 4px;
+    text-transform: uppercase;
+    font-size: 13px;
+    font-weight: 400;
+  }
+
+  .collection-swatches__group-description {
+    margin-block-end: 40px;
+    color: var(--color-foreground-secondary, inherit);
+    line-height: 1.3125rem;
+    max-width: 490px;
+  }
+
+  .collection-swatches__group-samples {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 60px;
+  }
+
+  @media screen and (max-width: 989px) {
+    .collection-swatches__group-samples {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+
+  .collection-swatches__sample {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 0;
+    text-align: start;
+    background: transparent;
+    cursor: pointer;
+    color: inherit;
+    font: inherit;
+    border: 0;
+  }
+
+  .collection-swatches__sample:hover .collection-swatches__sample-toggle,
+  .collection-swatches__sample[data-selected='true'] .collection-swatches__sample-toggle {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .collection-swatches__sample[data-selected='true'] .collection-swatches__sample-toggle {
+    background-color: #e5e5e5;
+  }
+
+  .collection-swatches__sample-image {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
+    overflow: hidden;
+    background: var(--color-background-secondary, #f4f4f4);
+  }
+
+  .collection-swatches__sample-image img,
+  .collection-swatches__sample-image svg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .collection-swatches__sample-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.875rem;
+  }
+
+  .collection-swatches__sample-name {
+    text-transform: uppercase;
+    font-weight: 400;
+    font-size: 11px;
+    letter-spacing: 0.94px;
+  }
+
+  .collection-swatches__sample-byline,
+  .collection-swatches__sample-rub {
+    font-size: 0.75rem;
+    color: var(--color-foreground-secondary, inherit);
+  }
+
+  .collection-swatches__sample-toggle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background-color: #fff;
+    border: 1px solid var(--color-border, currentColor);
+    transform: translate(50%, -50%);
+    box-shadow: 0 4px 6px #00000029;
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .collection-swatches__sample-toggle .svg-wrapper {
+    width: 14px;
+    height: 14px;
+    display: inline-flex;
+  }
+
+  .collection-swatches__sample[data-selected='true'] .collection-swatches__sample-toggle-add,
+  .collection-swatches__sample[data-selected='false'] .collection-swatches__sample-toggle-remove {
+    display: none;
+  }
+
+  .collection-swatches__footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    border-block-start: 1px solid var(--color-border, rgba(0, 0, 0, 0.1));
+    background: var(--color-background, #fff);
+  }
+
+  .collection-swatches__footer-inner {
+    max-width: var(--page-width, 1200px);
+    margin: 0 auto;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+    justify-content: space-between;
+  }
+
+  @media screen and (max-width: 749px) {
+    .collection-swatches__footer-inner {
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+  }
+
+  .collection-swatches__selected {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+  }
+
+  .collection-swatches__slot {
+    position: relative;
+    aspect-ratio: 1;
+    overflow: hidden;
+    font-size: 0.875rem;
+    color: var(--color-foreground-secondary, inherit);
+    width: 40px;
+    height: 40px;
+    border: 1px solid #0000001a;
+  }
+
+  .collection-swatches__slot-placeholder {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .collection-swatches__slot[data-filled='true'] {
+    border-style: solid;
+  }
+
+  .collection-swatches__slot-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .collection-swatches__add {
+    width: fit-content;
+    white-space: nowrap;
+  }
+
+  @media screen and (max-width: 749px) {
+    .collection-swatches__add {
+      width: 100%;
+    }
+  }
+
+  .collection-swatches__add[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .collection-swatches__error {
+    margin: 0;
+    min-height: 1em;
+    font-size: 0.875rem;
+    color: var(--color-error, #b00020);
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Collection swatches",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Renders the free fabric-swatch picker as a full collection page. Pulls data from the `fabric_groups` metaobject entry with handle `fabric-groups-main` and the `order-free-fabric-swatches` collection. Assign the `collection.swatches` template to that collection. See docs/fabric-swatches-collection.md."
+    },
+    {
+      "type": "textarea",
+      "id": "intro",
+      "label": "Intro copy",
+      "default": "Should you be planning a new sofa, armchair, or footstool, you can choose up to six of our hand-cut fabric swatches for free and we'll send them on their way to you with free postage too."
+    },
+    {
+      "type": "text",
+      "id": "add_button_label",
+      "label": "Add to basket button label",
+      "default": "Add to Basket"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:settings.color_scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 48
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.padding_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_mobile_padding",
+      "label": "t:settings.enable_mobile_padding",
+      "info": "t:info.enable_mobile_padding",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start-mobile",
+      "label": "t:settings.top_mobile",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ section.settings.enable_mobile_padding }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end-mobile",
+      "label": "t:settings.bottom_mobile",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ section.settings.enable_mobile_padding }}"
+    }
+  ]
+}
+{% endschema %}

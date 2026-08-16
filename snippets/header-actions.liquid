@@ -1,0 +1,807 @@
+<script
+  type="module"
+  src="{{ 'cart-icon.js' | asset_url }}"
+  fetchpriority="low"
+></script>
+
+{% capture cart_icon %}
+  <cart-icon
+    class="header-actions__cart-icon{% if display_style == 'text' %} header-actions__cart-icon--text{% endif %}{% unless cart == empty %} header-actions__cart-icon--has-cart{% endunless %}"
+    data-testid="cart-icon"
+  >
+    <span class="{% if display_style == 'icon' %}hidden{% else %}mobile:hidden{% endif %}">
+      {{ 'content.cart_title' | t }}
+    </span>
+
+    <span
+      class="svg-wrapper {% if display_style != 'icon' %}desktop:hidden{% endif %}"
+      aria-hidden="true"
+    >
+      <svg viewBox="0 0 19 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4.64258 7.67857V3.42857C4.64258 2.17118 5.81376 1 7.07115 1H11.6247C12.8821 1 14.3569 2.17118 14.3569 3.42857V7.67857" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M6.46387 4.94629H12.5353" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M15.5714 5.25H18V18.6071H1V5.25H3.42857" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </span>
+
+    {% render 'cart-bubble', limit: 100, live_region: true %}
+  </cart-icon>
+{% endcapture %}
+
+{% capture account_icon %}
+  <svg width="19" height="20" viewBox="0 0 19 20" fill="none" xmlns="http://www.w3.org/2000/svg" slot="signed-out-avatar" class="hello account-button__icon">
+    <path
+      d="M18 18.607a8.5 8.5 0 00-17 0"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+
+    <path
+      clip-rule="evenodd"
+      d="M13.143 4.643a3.643 3.643 0 11-7.285 0 3.643 3.643 0 017.285 0z"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </svg>
+{% endcapture %}
+
+<header-actions
+  {% if display_style == 'text' %}
+    class="header-actions--text"
+  {% endif %}
+  {{- block.shopify_attributes -}}
+>
+  {% if shop.customer_accounts_enabled %}
+    {% liquid
+      assign account_actions_style = ''
+      if display_style == 'text' and section
+        assign actions_font = section.settings.actions_font | default: 'body'
+        assign font_obj = settings.type_heading_font
+        case actions_font
+          when 'body'
+            assign font_obj = settings.type_body_font
+          when 'subheading'
+            assign font_obj = settings.type_subheading_font
+          when 'accent'
+            assign font_obj = settings.type_accent_font
+        endcase
+        assign font_family = font_obj.family | append: ', ' | append: font_obj.fallback_families
+        assign font_family_safe = font_family | replace: '"', "'"
+        assign account_actions_style = '--header-actions-font-family: ' | append: font_family_safe | append: '; --header-actions-font-weight: ' | append: font_obj.weight | append: ';'
+      endif
+    %}
+    <div
+      class="account-button header-actions__action{% if display_style == 'text' %} account-button--text{% endif %} color-{{ settings.popover_color_scheme }}"
+    >
+      {% comment %}
+        Shopify's <shopify-account> web component renders its own signed-in
+        avatar (a coloured circle with the customer's initial) inside its
+        shadow DOM. That avatar can't be replaced via a slot or restyled with
+        theme CSS. So when the customer is logged in we render our own account
+        link with the default account icon instead, and only fall back to
+        <shopify-account> for the signed-out state.
+      {% endcomment %}
+      {% if customer %}
+        <a
+          href="{{ routes.account_url }}"
+          class="account-button__link header-actions__action{% if display_style == 'text' %} header-actions__text-style{% endif %}"
+          aria-label="{{ 'content.account_title' | t }}"
+          {% if account_actions_style != blank %}
+            style="{{ account_actions_style }}"
+          {% endif %}
+        >
+          <span
+            class="account-button__text header-actions__text-style {% if display_style == 'icon' %}hidden{% else %}mobile:hidden{% endif %}"
+          >
+            {{ 'content.account_title' | t }}
+          </span>
+
+          <span
+            class="{% if display_style != 'icon' %}desktop:hidden{% endif %}"
+            aria-hidden="true"
+          >
+            {{ account_icon }}
+          </span>
+        </a>
+      {% else %}
+        <shopify-account
+          menu="{{ customer_account_menu }}"
+          {% if account_actions_style != blank %}
+            style="{{ account_actions_style }}"
+          {% endif %}
+        >
+          <span
+            slot="signed-out-avatar"
+            class="account-button__text header-actions__text-style {% if display_style == 'icon' %}hidden{% else %}mobile:hidden{% endif %}"
+          >
+            {{ 'content.account_title' | t }}
+          </span>
+
+          <span
+            slot="signed-out-avatar"
+            class="{% if display_style != 'icon' %}desktop:hidden{% endif %}"
+            aria-hidden="true"
+          >
+            {{ account_icon }}
+          </span>
+        </shopify-account>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if settings.cart_type == 'drawer' and template.name != 'cart' %}
+    <script
+      src="{{ 'cart-drawer.js' | asset_url }}"
+      type="module"
+      fetchpriority="low"
+    ></script>
+
+    {% capture empty_cart_drawer_content %}
+      <div class="cart-drawer__header">
+        <button
+          ref="closeButton"
+          on:click="cart-drawer-component/close"
+          class="button close-button cart-drawer__close-button button-unstyled"
+          aria-label="{{ 'actions.close_dialog' | t }}"
+        >
+          <span class="svg-wrapper">
+            <svg width="16px" height="17px" viewBox="0 0 16 17" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+              <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" stroke-linecap="square">
+                <g id="Group" transform="translate(1.182860, 1.682690)" stroke="#717171">
+                  <line x1="13.63428" y1="0.00034" x2="0" y2="13.63462" id="Path"></line>
+                  <line x1="3e-05" y1="0" x2="13.63428" y2="13.63432" id="Path"></line>
+                </g>
+              </g>
+            </svg>
+          </span>
+        </button>
+      </div>
+
+      <div
+        class="cart-drawer__content"
+        aria-label="{{ 'accessibility.cart' | t }}"
+      >
+        <h2
+          class="cart-drawer__heading h4 cart-drawer__heading--empty"
+          id="cart-drawer-heading-empty"
+        >
+          {{ 'content.your_cart_is_empty' | t }}
+        </h2>
+
+        <div class="cart-drawer__items">
+          {% render 'cart-products', force_empty: true %}
+        </div>
+      </div>
+    {% endcapture %}
+
+    <cart-drawer-component
+      class="cart-drawer{% if display_style == 'text' %} cart-drawer--text{% endif %}"
+      {{ block.shopify_attributes }}
+      {% if settings.auto_open_cart_drawer %}
+        auto-open
+      {% endif %}
+    >
+      <template id="empty-cart-template">
+        {{ empty_cart_drawer_content }}
+      </template>
+      <button
+        class="header-actions__action button-unstyled{% if display_style == 'text' %} header-actions__text-style{% endif %}"
+        on:click="/open"
+        aria-haspopup="dialog"
+        aria-label="{{ 'accessibility.cart' | t }}"
+        aria-describedby="cart-bubble-text"
+        data-testid="cart-drawer-trigger"
+      >
+        {{ cart_icon }}
+      </button>
+
+      <dialog
+        ref="dialog"
+        class="cart-drawer__dialog dialog-modal dialog-drawer color-{{ settings.drawer_color_scheme }}{% if cart.empty? %} cart-drawer--empty{%endif%}"
+        data-testid="cart-drawer-dialog"
+        aria-labelledby="{% if cart.empty? %}cart-drawer-heading-empty{% else %}cart-drawer-heading{% endif %}"
+        scroll-lock
+        cart-summary-sticky="true"
+      >
+        <div
+          class="cart-drawer__inner"
+          data-hydration-key="cart-drawer-inner"
+        >
+          <cart-items-component
+            class="cart-items-component"
+            data-drawer
+            data-section-id="{{ section.id }}"
+          >
+            {%- if cart.empty? -%}
+              {{ empty_cart_drawer_content }}
+            {%- else -%}
+              <div
+                class="cart-drawer__header"
+                id="cart-drawer-header"
+              >
+                <h2
+                  class="cart-drawer__heading h4"
+                  id="cart-drawer-heading"
+                >
+                  {{ 'content.cart_title' | t }}
+                  {% render 'cart-bubble' %}
+                </h2>
+
+                <button
+                  ref="closeButton"
+                  on:click="cart-drawer-component/close"
+                  class="button close-button cart-drawer__close-button button-unstyled"
+                  aria-label="{{ 'actions.close_dialog' | t }}"
+                >
+                  <span class="svg-wrapper">
+                      <svg width="16px" height="17px" viewBox="0 0 16 17" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+                          <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" stroke-linecap="square">
+                            <g id="Group" transform="translate(1.182860, 1.682690)" stroke="#717171">
+                              <line x1="13.63428" y1="0.00034" x2="0" y2="13.63462" id="Path"></line>
+                              <line x1="3e-05" y1="0" x2="13.63428" y2="13.63432" id="Path"></line>
+                            </g>
+                          </g>
+                      </svg>
+                  </span>
+                </button>
+              </div>
+
+              <scroll-hint
+                class="cart-drawer__content"
+                aria-label="{{ 'accessibility.cart' | t }}"
+                style="--header-height: 60px;"
+              >
+                <scroll-hint
+                  class="cart-drawer__items"
+                >
+                  {% render 'cart-products', drawer_context: 'drawer' %}
+                </scroll-hint>
+
+                <div
+                  class="cart-drawer__summary"
+                >
+                  {% render 'cart-summary', section_id: section.id %}
+                  <div class="cart-drawer__secure-transactions">
+                    <span>Secure payments</span>
+                    <ul>
+                      <li><svg width="50" height="14" xmlns="http://www.w3.org/2000/svg"><g fill="#717171" fill-rule="evenodd"><path d="M15.181 5.895h-1.493c-.015-.232-.006-.464-.007-.695-.002-.233 0-.467 0-.701v-.722-.701-.701-.733c-.125.14-.157.286-.206.42-.276.748-.541 1.5-.814 2.248-.186.514-.378 1.026-.569 1.539-.004.012-.016.02-.031.04h-1.357c-.052-.137-.104-.272-.154-.407-.223-.599-.448-1.197-.668-1.797-.141-.383-.275-.77-.414-1.153-.106-.29-.215-.58-.32-.862-.025 0-.031-.002-.035 0-.005.004-.011.01-.012.015a.36.36 0 00-.007.06v4.127c-.147.032-1.178.04-1.504.013V.039c.146-.038 1.743-.053 2.432-.02.023.056.055.12.079.186.15.422.297.845.45 1.266.19.52.385 1.038.577 1.557.087.234.172.469.276.704.256-.61.466-1.232.692-1.847.228-.618.445-1.24.669-1.865h2.405c.03.147.042 5.508.011 5.875zM43.086.015h1.983c.397.597.794 1.205 1.203 1.805.406.598.792 1.211 1.208 1.8.022-.011.028-.013.033-.017.005-.004.01-.01.012-.016a.762.762 0 00.005-.08V.043c.145-.039 1.046-.05 1.506-.02V5.89H47.17c-.423-.603-.823-1.24-1.24-1.866L44.68 2.15c-.018.003-.024.003-.028.006a.032.032 0 00-.011.016.166.166 0 00-.006.04v3.676h-1.532l-.006-.007c-.004-.005-.008-.011-.008-.017a5.039 5.039 0 01-.003-.14V.015zM24.067 2.536c.06.003.099.007.138.007.527 0 1.054.003 1.58-.002.325-.003.58-.122.69-.458v-.31l-.077-.15a.48.48 0 00-.277-.245 1.647 1.647 0 00-.444-.083c-.493-.01-.986-.004-1.48-.003-.043 0-.087.01-.13.017v1.227zM22.512.018c1.267 0 2.516-.01 3.765.007.322.004.63.125.91.303.319.203.57.465.704.815.133.348.178.71.108 1.09a1.819 1.819 0 01-.528.998c-.23.225-.513.37-.822.463l-.204.063c.07.093.121.17.181.237.155.174.314.345.473.515l.726.77c.168.18.334.362.5.544.013.013.018.033.027.051-.166.031-1.372.04-1.87.016l-1.796-2.07h-.593c-.01.01-.015.013-.019.019-.004.005-.009.01-.009.016v2.032h-1.538l-.006-.007c-.004-.005-.009-.01-.009-.016V.018zM28.162 8.945v1.19c.05.077.115.06.173.06.26.001.522.003.782 0 .312-.004.625.02.936-.033.28-.048.472-.2.517-.47.007-.045.023-.088.025-.098-.026-.24-.105-.418-.279-.542-.188-.092-.39-.112-.598-.109-.448.007-.895.002-1.343.002h-.213zm-1.53-1.31h2.114c.441 0 .882-.008 1.323.004.283.008.564.042.836.143.526.195.909.525 1.108 1.064.068.184.108.366.11.56.001.245.007.49-.081.727-.118.316-.282.604-.545.814a2.009 2.009 0 01-.828.407c-.031.006-.06.022-.09.033-.01.09.048.135.096.187.242.256.486.512.726.77.318.342.633.685.947 1.029.035.038.06.085.098.14h-1.87l-1.77-2.034h-.652v2.033h-1.496l-.014-.013c-.003-.005-.007-.012-.007-.017l-.004-5.733v-.113zM9.1 9.92h3.355v1.3c-.213.026-.432.008-.65.01-.227.004-.454.002-.681.002H9.103c0 .18-.008.345-.001.51.007.16-.036.328.034.498h3.402v1.256l-.011.012c-.005.003-.011.008-.017.008l-4.773.004H7.59V7.655l.008-.007c.005-.004.011-.009.017-.009l.12-.003h4.8v1.297c-.183.027-.375.008-.566.012-.187.003-.374 0-.562 0H9.105c-.01.325-.002.636-.006.974zM2.719 3.398c.174.035 1.507.037 1.682.005-.009-.164-.578-1.553-.812-1.982-.016.012-.038.02-.044.036l-.826 1.94zM7.217 5.89h-1.73l-.512-1.193c-.918-.006-1.831 0-2.757-.003-.127.177-.19.385-.27.586-.08.202-.173.4-.264.607H0L2.591.017h2.033c.265.605.53 1.216.799 1.825.123.279.253.554.375.832.17.387.334.777.503 1.164.111.255.228.507.341.76l.575 1.292zM39.13 1.412l-.051.003c-.272.661-.564 1.315-.825 1.985.212.037 1.544.033 1.706-.007l-.83-1.98zm1.878 4.48l-.505-1.189h-2.795l-.502 1.189h-1.67c.03-.081.053-.153.083-.222.193-.443.385-.885.581-1.326.177-.399.361-.795.537-1.194.17-.387.333-.777.503-1.165.133-.301.274-.6.408-.9.128-.29.252-.582.379-.873.029-.066.065-.13.097-.194h2.018l2.595 5.874h-1.729zM46.133 9.204c-.046.125-.084.251-.034.385.076.207.244.326.489.331.24.005.48.002.721.002.194 0 .388-.004.582 0 .324.009.648.022.961.117.552.168.935.509 1.075 1.085.037.152.08.312.071.466-.022.362-.064.726-.268 1.043-.217.337-.502.59-.887.731a2.53 2.53 0 01-.893.157c-1.023-.004-2.045-.002-3.068-.002h-.147V12.24h.178c.956 0 1.911.002 2.867-.001.105 0 .214-.01.313-.042.171-.055.311-.154.36-.347 0-.06.007-.12-.003-.18-.01-.064-.035-.126-.049-.174-.146-.201-.337-.267-.564-.266-.528.004-1.056.01-1.584-.003a1.888 1.888 0 01-.99-.306c-.445-.29-.677-.705-.704-1.236-.004-.065-.02-.13-.028-.184.01-.082.027-.153.028-.225.006-.266.098-.504.23-.73.267-.457.681-.708 1.183-.828a2.93 2.93 0 01.688-.083c1.002.002 2.004 0 3.007 0h.196l-.6 1.31h-.193c-.789 0-1.577.006-2.366-.003-.24-.003-.428.071-.571.262zM38.911 13.52v-1.271c.066-.003.13-.008.195-.008.935 0 1.871-.002 2.806 0 .204.001.395-.032.558-.142.147-.16.144-.345.124-.546l-.102-.157c-.146-.133-.32-.168-.514-.166-.481.005-.962.001-1.443.002-.301 0-.594-.058-.866-.18-.512-.23-.821-.624-.925-1.182a1.923 1.923 0 01.12-1.145c.202-.464.562-.762 1.032-.933a2.96 2.96 0 01.558-.126c.233-.037.464-.028.696-.029.889-.003 1.777-.001 2.666-.001h.22l-.591 1.282c-.062.048-.131.026-.196.026-.781.002-1.563.004-2.345 0-.191-.001-.37.018-.542.178l-.103.155v.16c.001.28.187.473.47.483.107.004.214.002.32.002.328 0 .656-.005.983.002.219.004.438.013.655.039.236.028.472.086.676.206.295.173.543.41.663.74.202.552.184 1.104-.083 1.634-.196.39-.513.65-.914.813a2.37 2.37 0 01-.91.165c-1.023-.005-2.045-.002-3.067-.002h-.14zM20.052 13.513h-1.98c-.266-.303-.534-.606-.8-.911-.243-.28-.485-.563-.726-.845-.026-.03-.049-.064-.07-.092-.16.091-.31.26-.574.596-.172.219-.362.423-.545.634l-.537.619h-1.937c.115-.135.22-.265.332-.39.165-.183.337-.36.5-.545.24-.273.476-.552.715-.828.109-.125.22-.249.331-.372.161-.177.325-.352.485-.53.08-.089.154-.183.24-.286-.042-.061-.079-.13-.13-.188-.154-.175-.315-.343-.47-.517-.163-.184-.32-.372-.482-.556-.11-.126-.22-.25-.332-.373-.16-.177-.325-.351-.485-.53-.222-.247-.44-.497-.668-.755h1.99l1.555 1.8c.543-.592 1.04-1.206 1.575-1.803h1.93c-.127.143-.245.273-.36.406-.157.18-.31.362-.468.542-.128.145-.258.287-.387.43-.167.182-.337.36-.5.544-.272.308-.541.62-.82.94.042.065.079.135.13.192.144.165.296.324.441.489.25.284.496.571.744.857.1.115.2.23.303.344.16.177.325.351.484.53.171.193.337.39.516.598zM21.9 10.28c.634 0 1.248.005 1.862-.002a.6.6 0 00.412-.176c.27-.267.202-.737.022-.927a.73.73 0 00-.55-.228c-.548-.005-1.096-.002-1.643-.001-.032 0-.064.005-.103.008v1.327zm-1.546-2.643c1.203 0 2.393-.01 3.582.005.427.006.834.128 1.191.383.278.199.48.457.613.767.124.289.18.595.16.91-.024.408-.134.785-.394 1.119-.338.433-.784.647-1.313.738-.193.033-.383.032-.576.033-.5.002-1.002 0-1.503 0h-.208c-.03.224-.01.436-.014.648-.004.207-.001.414-.001.621v.649h-1.528c-.029-.143-.039-5.525-.01-5.873zM36.157.012v1.32h-.205c-.367 0-.735-.004-1.102.002-.252.004-.507.002-.755.04-.519.078-.92.335-1.108.847-.061.164-.109.338-.107.52.003.239-.01.478.04.715.107.498.383.857.866 1.03.171.063.355.1.543.1.327-.001.653 0 1.003 0-.094.234-.206.439-.306.649-.103.214-.2.432-.307.666-.297-.023-.592.016-.892-.031-.182-.029-.366-.048-.546-.091a2.52 2.52 0 01-1.134-.618 2.251 2.251 0 01-.588-.888 3.598 3.598 0 01-.198-.843 4.039 4.039 0 01-.03-.636c.021-.403.092-.794.245-1.173a2.57 2.57 0 01.716-.99c.216-.187.468-.319.737-.416a3.24 3.24 0 011.124-.202c.629.003 1.257 0 1.885-.001h.12zM28.922.018h1.506V5.89h-1.486c-.001 0-.007-.004-.011-.01-.004-.004-.009-.01-.009-.016V.018zM17.919 2.285h3.356v1.301c-.213.025-.432.007-.65.01-.227.004-.455.001-.682.001h-2.02c-.001.18-.009.345-.002.51.007.161-.036.329.035.499h3.401V5.86l-.01.012c-.006.004-.012.008-.018.008l-4.772.004h-.147V.021c-.002.001.002-.004.008-.008.005-.003.01-.008.016-.009l.12-.003h4.801v1.297c-.183.027-.376.009-.567.012-.187.003-.374 0-.561 0h-2.303c-.01.325-.002.636-.005.975zM34.58 9.921h3.357v1.302c-.213.025-.432.006-.65.01-.227.003-.455 0-.682 0h-2.02c-.001.18-.009.346-.002.51.008.162-.035.33.035.5h3.402v1.255l-.012.011c-.005.004-.01.009-.017.009l-4.772.003h-.147V7.657l.008-.007c.005-.004.01-.009.016-.01l.12-.002h4.801v1.297c-.183.027-.376.008-.567.011-.187.004-.374.001-.561.001h-2.302c-.01.325-.002.635-.006.974z"/></g></svg></li>
+                      <li><svg width="38" height="16" viewBox="0 0 38 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path fill-rule="evenodd" clip-rule="evenodd" d="M7.52057 2.70921C7.09485 3.21834 6.41362 3.6199 5.73238 3.56254C5.64724 2.87415 5.98079 2.14271 6.37101 1.69095C6.7968 1.16749 7.54188 0.794649 8.14506 0.76593C8.21601 1.48304 7.93927 2.18576 7.52057 2.70921ZM8.13789 3.69876C7.53775 3.66389 6.99014 3.8812 6.54782 4.0567C6.26318 4.16962 6.02217 4.26525 5.83876 4.26525C5.63296 4.26525 5.38202 4.16456 5.10021 4.05142C4.73093 3.90319 4.30876 3.7337 3.86608 3.7418C2.85137 3.75612 1.9076 4.33702 1.38956 5.26203C0.325166 7.11207 1.11282 9.85138 2.14173 11.3572C2.64557 12.103 3.24876 12.9204 4.04347 12.8918C4.39311 12.8785 4.64463 12.7706 4.90492 12.659C5.20463 12.5305 5.51593 12.397 6.00202 12.397C6.47122 12.397 6.76891 12.527 7.0547 12.6518C7.32637 12.7705 7.58731 12.8844 7.9747 12.8775C8.79782 12.8631 9.31586 12.1317 9.81963 11.3859C10.3633 10.5855 10.6023 9.80436 10.6385 9.68579L10.6428 9.67205C10.6419 9.67118 10.6352 9.66807 10.6233 9.66265C10.4416 9.57851 9.05238 8.93584 9.03912 7.21247C9.02572 5.76596 10.1409 5.03307 10.3165 4.91769C10.3272 4.91068 10.3344 4.90597 10.3377 4.90351C9.62804 3.84221 8.52108 3.72747 8.13789 3.69876ZM13.8361 12.7985V1.61926H17.9872C20.1303 1.61926 21.6275 3.11077 21.6275 5.29068C21.6275 7.47066 20.1019 8.9765 17.9305 8.9765H15.5533V12.7985H13.8361ZM15.5532 3.08213H17.533C19.0231 3.08213 19.8746 3.88525 19.8746 5.29791C19.8746 6.7105 19.0231 7.52086 17.5259 7.52086H15.5532V3.08213ZM27.2973 11.4576C26.8432 12.3324 25.8426 12.8846 24.764 12.8846C23.1674 12.8846 22.0533 11.9237 22.0533 10.4752C22.0533 9.04102 23.1319 8.21641 25.1259 8.09452L27.2689 7.96539V7.34876C27.2689 6.43807 26.6799 5.94326 25.6298 5.94326C24.764 5.94326 24.1325 6.39503 24.0048 7.08342H22.4578C22.5075 5.63495 23.8557 4.5808 25.6794 4.5808C27.645 4.5808 28.9223 5.62055 28.9223 7.23403V12.7985H27.3328V11.4576H27.2973ZM25.2251 11.558C24.3098 11.558 23.7279 11.1134 23.7279 10.4322C23.7279 9.72949 24.2885 9.32069 25.36 9.25616L27.2688 9.13427V9.7653C27.2688 10.8123 26.3889 11.558 25.2251 11.558ZM34.1946 13.236C33.5063 15.1936 32.7186 15.839 31.044 15.839C30.9162 15.839 30.4904 15.8247 30.3911 15.796V14.4551C30.4975 14.4694 30.7601 14.4837 30.8949 14.4837C31.6542 14.4837 32.08 14.161 32.3425 13.3221L32.4986 12.8272L29.5893 4.68837H31.3846L33.4069 11.2927H33.4424L35.4648 4.68837H37.2104L34.1946 13.236Z" fill="#717171"/>
+                      </svg></li>
+                      <li><svg width="29" height="23" viewBox="0 0 29 23" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M27.6091 20.9687V18.8333H27.1329V20.0749C26.9574 19.8513 26.7093 19.7272 26.3559 19.7272C25.6795 19.7272 25.1778 20.2487 25.1778 20.9687C25.1778 21.6886 25.6789 22.2102 26.3559 22.2102C26.7069 22.2102 26.9574 22.0861 27.1329 21.8625V22.1622H27.6091V20.9687ZM12.0449 19.8015H12.9223L12.9217 19.8045V20.2019H12.0443V21.3433C12.0443 21.5915 12.1696 21.7408 12.4201 21.7408C12.5795 21.7435 12.7363 21.7004 12.8715 21.6167L13.0222 22.0363C12.8228 22.1458 12.5996 22.2055 12.3717 22.2102C11.7702 22.2102 11.5699 21.8871 11.5699 21.3409V20.2211H11.0689V19.8015H11.5699V19.0821H12.0449V19.8015ZM5.10334 20.6707V22.1604H4.57812V20.7948C4.57812 20.398 4.37784 20.1744 4.02688 20.1744C3.67593 20.1744 3.42542 20.3752 3.42542 20.7948V22.1604H2.94922V20.7948C2.94922 20.398 2.74893 20.1744 2.39798 20.1744C2.04703 20.1744 1.79652 20.3752 1.79652 20.7948V22.1586H1.32031V19.7751H1.79652V20.0749C1.96428 19.8455 2.23702 19.7149 2.52263 19.7272C2.90081 19.7272 3.1489 19.8734 3.32437 20.1468C3.55007 19.8267 3.8738 19.7272 4.17634 19.7272C4.75239 19.7272 5.10334 20.0994 5.10334 20.6707ZM17.3831 19.7272C17.1192 19.7213 16.8717 19.8534 16.7314 20.0749V19.7751H16.2552V22.1586H16.7314V20.82C16.7314 20.4226 16.9317 20.1744 17.2578 20.1744C17.3679 20.1788 17.4771 20.1955 17.5833 20.2241L17.734 19.7769C17.6191 19.7482 17.5015 19.7315 17.3831 19.7272ZM9.66452 19.7272C10.0403 19.7272 10.3912 19.8015 10.6417 19.9753L10.3955 20.35C10.2448 20.2757 9.94588 20.1516 9.64334 20.1516C9.36742 20.1516 9.16713 20.2775 9.16713 20.4513C9.16713 20.6 9.365 20.6749 9.59069 20.6995L9.8412 20.7241C10.3658 20.799 10.6684 20.9998 10.6684 21.4195C10.6684 21.8667 10.2926 22.1892 9.59069 22.1892C9.33898 22.1892 8.91299 22.1377 8.56204 21.8895L8.81255 21.5172C9.04544 21.6841 9.32691 21.7712 9.61429 21.7654C9.99066 21.7654 10.1909 21.6395 10.1909 21.4656C10.1909 21.3415 10.0155 21.242 9.73955 21.1923L9.48904 21.1677C8.96322 21.0928 8.68729 20.8698 8.68729 20.4723C8.68729 20.0005 9.06306 19.7272 9.66452 19.7272ZM17.9095 20.9702C17.9102 21.6888 18.3862 22.2102 19.1626 22.2102C19.5136 22.2102 19.7641 22.1359 20.0146 21.9368L19.7641 21.5646C19.5867 21.7069 19.366 21.7857 19.1378 21.7882C18.7143 21.7882 18.3857 21.4656 18.3857 20.9939C18.3857 20.5221 18.71 20.2019 19.1378 20.2019C19.366 20.2045 19.5867 20.2832 19.7641 20.4256L20.0146 20.0533C19.7641 19.8548 19.5136 19.7799 19.1626 19.7799C18.411 19.7302 17.9102 20.251 17.9095 20.9702ZM13.3731 20.9687C13.3731 20.2235 13.8493 19.7272 14.5512 19.7272V19.7278C15.2277 19.7278 15.6791 20.2241 15.6791 20.9693V21.1677H13.8995C13.9492 21.5897 14.3001 21.7882 14.6257 21.7882C14.8803 21.7815 15.1262 21.6946 15.3276 21.54L15.5781 21.8877C15.2996 22.1036 14.9544 22.2176 14.6008 22.2102C13.8741 22.2102 13.3731 21.7138 13.3731 20.9687ZM14.5264 20.1744C14.8774 20.1744 15.1279 20.398 15.1527 20.7702H13.8499C13.925 20.4226 14.1525 20.1744 14.5264 20.1744ZM8.03561 19.7769V20.9687V22.164H7.5594V21.8643C7.38393 22.0879 7.13342 22.212 6.78247 22.212C6.10537 22.212 5.60436 21.6904 5.60436 20.9705C5.60436 20.2505 6.10598 19.729 6.78247 19.729C7.13584 19.729 7.38393 19.8531 7.5594 20.0767V19.7769H8.03561ZM6.10598 20.9687C6.10598 20.5215 6.3819 20.1744 6.8581 20.1744C7.3095 20.1744 7.58421 20.5221 7.58421 20.9687C7.58421 21.4405 7.28167 21.763 6.8581 21.763C6.3819 21.7876 6.10598 21.4153 6.10598 20.9687ZM23.9749 20.0749C24.1152 19.8534 24.3627 19.7213 24.6266 19.7272H24.626C24.7444 19.7315 24.862 19.7482 24.9769 19.7769L24.8263 20.2241C24.72 20.1955 24.6108 20.1788 24.5007 20.1744C24.1746 20.1744 23.9743 20.4226 23.9743 20.82V22.1586H23.4987V19.7751H23.9749V20.0749ZM22.772 20.9687V19.7769H22.2958V20.0767C22.1203 19.8531 21.8722 19.729 21.5189 19.729C20.8424 19.729 20.3407 20.2505 20.3407 20.9705C20.3407 21.6904 20.8418 22.212 21.5189 22.212C21.8698 22.212 22.1203 22.0879 22.2958 21.8643V22.164H22.772V20.9687ZM21.5945 20.1744C21.1183 20.1744 20.8424 20.5215 20.8424 20.9687C20.8424 21.4153 21.1183 21.7876 21.5945 21.763C22.0181 21.763 22.3206 21.4405 22.3206 20.9687C22.3206 20.5221 22.0459 20.1744 21.5945 20.1744ZM26.4316 20.1744C25.9554 20.1744 25.6795 20.5215 25.6795 20.9687H25.6789C25.6789 21.4159 25.9548 21.7882 26.4316 21.763C26.8551 21.763 27.1577 21.4405 27.1577 20.9687C27.1577 20.5221 26.883 20.1744 26.4316 20.1744Z" fill="#717171"/><g style="mix-blend-mode:multiply"><circle cx="9" cy="9" r="9" fill="#717171"/></g><g style="mix-blend-mode:multiply"><circle cx="20" cy="9" r="9" fill="#B8B8B8"/></g></svg></li>
+                      <li><svg width="36" height="11" viewBox="0 0 36 11" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M23.9865 3.30148C23.8385 4.28608 23.0915 4.28608 22.3695 4.28608H21.9585L22.2475 2.44758C22.2645 2.33658 22.3595 2.25488 22.4715 2.25488H22.6595C23.1515 2.25488 23.6155 2.25488 23.8545 2.53678C23.9975 2.70548 24.0405 2.95588 23.9865 3.30148ZM23.6725 0.731384H20.9505C20.7635 0.731384 20.6055 0.867984 20.5765 1.05338L19.4755 8.08928C19.4535 8.22788 19.5605 8.35348 19.6995 8.35348H21.0965C21.2265 8.35348 21.3375 8.25798 21.3585 8.12848L21.6705 6.13358C21.6995 5.94818 21.8575 5.81168 22.0435 5.81168H22.9055C24.6985 5.81168 25.7345 4.93708 26.0045 3.20328C26.1265 2.44548 26.0095 1.84968 25.6575 1.43258C25.2705 0.974084 24.5835 0.731384 23.6725 0.731384Z" fill="#717171"/><path fill-rule="evenodd" clip-rule="evenodd" d="M4.56856 3.30148C4.41956 4.28608 3.67356 4.28608 2.95156 4.28608H2.54056L2.82856 2.44758C2.84656 2.33658 2.94156 2.25488 3.05256 2.25488H3.24156C3.73256 2.25488 4.19656 2.25488 4.43656 2.53678C4.57957 2.70548 4.62256 2.95588 4.56856 3.30148ZM4.25456 0.731384H1.53256C1.34556 0.731384 1.18756 0.867984 1.15856 1.05338L0.0575647 8.08928C0.0355647 8.22788 0.142565 8.35348 0.281565 8.35348H1.58156C1.76756 8.35348 1.92556 8.21698 1.95556 8.03188L2.25256 6.13358C2.28156 5.94818 2.43956 5.81168 2.62556 5.81168H3.48756C5.28056 5.81168 6.31656 4.93708 6.58656 3.20328C6.70856 2.44548 6.59157 1.84968 6.23956 1.43258C5.85156 0.974084 5.16556 0.731384 4.25456 0.731384Z" fill="#717171"/><path fill-rule="evenodd" clip-rule="evenodd" d="M10.5753 5.82708C10.4493 6.57788 9.85828 7.08198 9.10328 7.08198C8.72528 7.08198 8.42228 6.95928 8.22828 6.72718C8.03528 6.49718 7.96228 6.16928 8.02428 5.80448C8.14128 5.06008 8.74228 4.53998 9.48528 4.53998C9.85528 4.53998 10.1553 4.66388 10.3543 4.89808C10.5543 5.13408 10.6323 5.46378 10.5753 5.82708ZM12.3923 3.27028H11.0883C10.9773 3.27028 10.8823 3.35198 10.8643 3.46338L10.8073 3.83058L10.7163 3.69758C10.4333 3.28478 9.80428 3.14648 9.17628 3.14648C7.73528 3.14648 6.50528 4.24658 6.26528 5.78928C6.14128 6.55898 6.31828 7.29448 6.75128 7.80768C7.14928 8.27928 7.71628 8.47558 8.39328 8.47558C9.55428 8.47558 10.1983 7.72418 10.1983 7.72418L10.1403 8.08928C10.1183 8.22798 10.2243 8.35358 10.3643 8.35358H11.5383C11.7243 8.35358 11.8833 8.21738 11.9123 8.03198L12.6173 3.53448C12.6383 3.39588 12.5323 3.27028 12.3923 3.27028Z" fill="#717171"/><path fill-rule="evenodd" clip-rule="evenodd" d="M29.9938 5.82708C29.8678 6.57788 29.2768 7.08198 28.5228 7.08198C28.1448 7.08198 27.8418 6.95928 27.6468 6.72718C27.4538 6.49718 27.3818 6.16928 27.4428 5.80448C27.5598 5.06008 28.1608 4.53998 28.9038 4.53998C29.2738 4.53998 29.5748 4.66388 29.7728 4.89808C29.9728 5.13408 30.0508 5.46378 29.9938 5.82708ZM31.8108 3.27028H30.5068C30.3948 3.27028 30.2998 3.35198 30.2828 3.46338L30.2248 3.83058L30.1338 3.69758C29.8518 3.28478 29.2218 3.14648 28.5938 3.14648C27.1538 3.14648 25.9228 4.24658 25.6838 5.78928C25.5588 6.55898 25.7358 7.29448 26.1688 7.80768C26.5668 8.27928 27.1348 8.47558 27.8108 8.47558C28.9718 8.47558 29.6158 7.72418 29.6158 7.72418L29.5578 8.08928C29.5358 8.22798 29.6428 8.35358 29.7818 8.35358H30.9558C31.1428 8.35358 31.3008 8.21738 31.3298 8.03198L32.0348 3.53448C32.0568 3.39588 31.9498 3.27028 31.8108 3.27028Z" fill="#717171"/><path fill-rule="evenodd" clip-rule="evenodd" d="M19.3369 3.27048H18.0259C17.9009 3.27048 17.7839 3.33308 17.7139 3.43778L15.9059 6.12068L15.1399 3.54248C15.0919 3.38118 14.9439 3.27048 14.7769 3.27048H13.4889C13.3339 3.27048 13.2239 3.42468 13.2739 3.57298L14.7169 7.84128L13.3599 9.77098C13.2539 9.92238 13.3609 10.1318 13.5449 10.1318H14.8539C14.9779 10.1318 15.0949 10.0706 15.1649 9.96808L19.5229 3.62958C19.6279 3.47778 19.5199 3.27048 19.3369 3.27048Z" fill="#717171"/><path fill-rule="evenodd" clip-rule="evenodd" d="M33.3504 0.924584L32.2334 8.08928C32.2114 8.22788 32.3174 8.35348 32.4574 8.35348H33.5814C33.7674 8.35348 33.9254 8.21698 33.9544 8.03158L35.0564 0.995684C35.0784 0.856984 34.9724 0.731384 34.8324 0.731384H33.5744C33.4624 0.731384 33.3674 0.813184 33.3504 0.924584Z" fill="#717171"/></svg></li>
+                      <li><svg width="31" height="10" viewBox="0 0 31 10" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M10.9219 9.85665L12.4916 0.16864H15.0005L13.4316 9.85665H10.9219Z" fill="#717171"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M22.5333 0.406467C22.0366 0.212046 21.2562 0 20.2845 0C17.8037 0 16.0571 1.31469 16.0426 3.19716C16.0272 4.58969 17.2889 5.36629 18.2406 5.82913C19.2177 6.3035 19.5467 6.60708 19.5431 7.03135C19.5358 7.68011 18.7618 7.97742 18.0403 7.97742C17.036 7.97742 16.5022 7.83104 15.6774 7.4694L15.3547 7.31515L15.0039 9.48366C15.5885 9.75351 16.6735 9.98765 17.7992 10C20.4359 10 22.149 8.70124 22.1689 6.69091C22.178 5.58675 21.5091 4.74975 20.0615 4.05876C19.1842 3.60953 18.6458 3.31195 18.6521 2.85726C18.653 2.45464 19.1071 2.02357 20.0896 2.02357C20.9108 2.01041 21.5045 2.19902 21.9677 2.39586L22.1934 2.50662L22.5333 0.406467Z" fill="#717171"/><path fill-rule="evenodd" clip-rule="evenodd" d="M25.8731 6.42205C26.0806 5.86509 26.8728 3.71349 26.8728 3.71349C26.8583 3.73908 27.0795 3.15224 27.2064 2.78899L27.3749 3.62474C27.3749 3.62474 27.8571 5.93765 27.9559 6.42205C27.5653 6.42205 26.3625 6.42205 25.8731 6.42205ZM28.9684 0.178314H27.0296C26.4278 0.178314 25.9782 0.349651 25.7144 0.981406L21.9883 9.86016H24.6232C24.6232 9.86016 25.0537 8.66581 25.1507 8.40366C25.438 8.40366 27.9994 8.40867 28.3647 8.40867C28.4399 8.74678 28.6702 9.86016 28.6702 9.86016H30.9996L28.9684 0.178314Z" fill="#717171"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M8.81607 0.176514L6.36012 6.78145L6.097 5.43884C5.63936 3.89189 4.2147 2.2152 2.62109 1.37507L4.86794 9.84798L7.52356 9.84637L11.4748 0.176514H8.81607Z" fill="#717171"/><path fill-rule="evenodd" clip-rule="evenodd" d="M4.07974 0.170441H0.0332644L0 0.371124C3.14861 1.17359 5.23185 3.11064 6.09654 5.43903L5.21726 0.987759C5.06553 0.373898 4.62466 0.191914 4.07974 0.170441Z" fill="#717171"/></svg></li>
+                    </ul>
+                  </div>
+                </div>
+              </scroll-hint>
+            {%- endif -%}
+          </cart-items-component>
+        </div>
+      </dialog>
+    </cart-drawer-component>
+  {% else %}
+    <a
+      href="{{ routes.cart_url }}"
+      class="header-actions__action action__cart{% if display_style == 'text' %} header-actions__text-style{% endif %}"
+      aria-label="{{ 'accessibility.cart' | t }}"
+      aria-describedby="cart-bubble-text"
+    >
+      {{ cart_icon }}
+    </a>
+  {% endif %}
+</header-actions>
+
+{% stylesheet %}
+  .header {
+    --account-offset-top: calc(
+      var(--header-group-height) + (var(--header-height) * var(--transparent-header-offset-boolean))
+    );
+
+    &[data-sticky-state='active'] {
+      --account-offset-top: calc(var(--header-height) - 1px);
+    }
+  }
+
+  .account-button {
+    /* Remove the background color from the color scheme, we want to inherit the color of the header */
+    background: transparent;
+    --clamped-avatar-size: 18px;
+    position: relative;
+    left: 15px;
+
+    @media only screen and (min-width: 750px) {
+      left: 0;
+    }
+  }
+
+  .account-button__icon,
+  .account-button__text {
+    color: var(--color-account-icon);
+    transition: color var(--header-content-transition-timing);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /*
+   * Signed-in account link. Mirrors the sizing/behaviour of the signed-out
+   * <shopify-account> button so the default account icon looks identical
+   * whether the customer is logged in or out.
+   */
+  .account-button__link {
+    color: var(--color-account-icon);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--gap-xs);
+    min-width: 44px;
+    height: 44px;
+    line-height: normal;
+  }
+
+  .account-button--text .account-button__link {
+    color: inherit;
+  }
+
+  shopify-account {
+    --shopify-account-font-heading: var(--font-heading--family);
+    --shopify-account-font-heading-weight: var(--font-heading--weight);
+    --shopify-account-font-body: var(--font-body--family);
+    --shopify-account-font-body-weight: var(--font-body--weight);
+    --shopify-account-radius-base: var(--style-border-radius-popover);
+    --shopify-account-radius-button: var(--style-border-radius-buttons-primary);
+    --shopify-account-radius-button-small: var(--style-border-radius-buttons-primary);
+    --shopify-account-radius-input: var(--style-border-radius-buttons-primary);
+    --shopify-account-color-background: var(--color-background);
+    --shopify-account-color-text: var(--color-foreground);
+    --shopify-account-color-accent: var(--color-primary-button-background);
+    --shopify-account-color-accent-text: var(--color-primary-button-text);
+    --shopify-account-dialog-position-top: var(--account-offset-top);
+
+    &:not(:defined) {
+      min-width: 44px;
+      height: 44px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      /* Match the line height of the other buttons */
+      line-height: normal;
+    }
+  }
+
+  .account-button__fallback {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background-color: var(--shopify-account-color-accent, #0a142f);
+  }
+
+  .account-button--text shopify-account {
+    color: inherit;
+  }
+
+  .cart-drawer {
+    --cart-drawer-padding: 25px 30px;
+    --cart-drawer-padding-desktop: var(--padding-xl) var(--padding-2xl);
+    display: flex;
+    align-items: center;
+    align-self: center;
+    position: relative;
+    left: 19px;
+    top: 2px;
+
+    @media screen and (min-width: 750px) {
+      margin-inline-end: 0; /*calc(var(--gap-xs) * -1);*/
+      left: 0;
+    }
+  }
+
+  @media screen and (min-width: 750px) {
+    .cart-drawer--text {
+      display: flex;
+      align-items: center;
+    }
+  }
+
+  .cart-drawer__dialog {
+    position: fixed;
+    overflow: hidden;
+    border-radius: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0 0 0 auto;
+    padding: 0;
+    border-left: var(--style-border-drawer);
+    box-shadow: var(--shadow-drawer);
+    background-color: var(--color-background);
+
+    @media screen and (min-width: 750px) {
+      width: var(--sidebar-width);
+      max-width: 460px;
+    }
+  }
+
+  /* Needed to ensure the drawer is full height */
+  .cart-drawer__dialog:modal {
+    max-height: 100dvh;
+    overflow-y: hidden;
+  }
+
+  .cart-drawer__inner {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .cart-drawer__content {
+    height: calc(100% - var(--header-height));
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    background-color: var(--color-background);
+    flex-grow: 1;
+    overflow-y: auto;
+  }
+
+  .cart-drawer__heading {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-xs);
+    margin-bottom: 0;
+  }
+
+  .cart-drawer__close-button {
+    margin-right: calc(var(--padding-sm) * -1);
+    top: var(--margin-sm);
+
+    @media screen and (max-width: 749px) {
+      top: var(--margin-2xs);
+    }
+  }
+
+  .cart-drawer--empty .cart-drawer__content {
+    text-align: center;
+    min-height: auto;
+  }
+
+  .cart-drawer--empty .cart-drawer__heading {
+    margin-bottom: var(--margin-md);
+  }
+
+  .cart-drawer__items .cart-items__table-row {
+    padding-bottom: var(--gap-xl);
+    border-bottom: var(--style-border-width) solid var(--color-border);
+    margin-bottom: var(--gap-xl);
+  }
+
+  .cart-drawer__items .cart-items__table-row:has(+ .cart-items__nested-line) {
+    border-bottom: none;
+    margin-bottom: 0;
+  }
+
+  .cart-drawer__items .cart-items__table-row:last-child {
+    border-bottom: none;
+  }
+
+  .cart-drawer__summary {
+    --cart-drawer-summary-padding: 30px; var(--padding-lg);
+
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 25px;
+    padding: var(--cart-drawer-summary-padding);
+    background-color: var(--color-background);
+    /* stylelint-disable-next-line color-named */
+    mask-image: linear-gradient(to bottom, transparent, black var(--cart-drawer-summary-padding));
+
+    @media screen and (min-width: 750px) {
+      --cart-drawer-summary-padding: 30px; var(--padding-2xl);
+    }
+  }
+
+  .cart-drawer__dialog[cart-summary-sticky='false'] .cart-drawer__summary {
+    position: static;
+    mask-image: none;
+  }
+
+  .cart-drawer__dialog[cart-summary-sticky='false'] .cart-drawer__items {
+    overflow: unset;
+  }
+
+  .cart-actions summary {
+    padding-inline: 0;
+    padding-block: var(--padding-sm);
+    line-height: 1.2;
+    min-height: var(--minimum-touch-target);
+  }
+
+  .cart-drawer__summary .cart__summary-totals:not(:has(.cart__subtotal-container:empty)) {
+    border-block-start: var(--style-border-width) solid var(--color-border);
+    padding-block-start: var(--padding-2xl);
+  }
+
+  .cart-drawer__summary .cart-note {
+    @media screen and (min-width: 750px) {
+      margin-block-start: var(--margin-3xs);
+    }
+  }
+
+  .cart-drawer__heading--empty {
+    display: flex;
+    justify-content: center;
+  }
+
+  .cart-drawer__items {
+    display: flex;
+    flex-direction: column;
+    padding-inline: 30px;
+    overflow-y: auto;
+
+    @media screen and (min-width: 750px) {
+      padding-inline: var(--cart-drawer-padding-desktop);
+    }
+  }
+
+  .cart-drawer__items .cart-items__table-row {
+    padding-bottom: var(--gap-xl);
+    border-bottom: var(--style-border-width) solid var(--color-border);
+    margin-bottom: var(--gap-xl);
+  }
+
+  .cart-drawer__items .cart-items__table-row:last-child {
+    border-bottom: none;
+    padding-block-end: 0;
+    margin-block-end: 0;
+  }
+
+  .cart-drawer--empty .cart-drawer__inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100dvh;
+    margin-top: 0;
+  }
+
+  .cart-drawer:not(:has(.cart-form)) .cart-drawer__content {
+    justify-content: center;
+  }
+
+  .cart-drawer__header {
+    background-color: var(--color-background);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: var(--cart-drawer-padding);
+    border-bottom: var(--style-border-width) solid none;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+
+    @media screen and (min-width: 750px) {
+      padding-inline: var(--cart-drawer-padding-desktop);
+    }
+  }
+
+  .cart-drawer--empty .cart-drawer__header {
+    justify-content: right;
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .cart-drawer--empty .cart-drawer__heading {
+    text-align: center;
+  }
+
+  header-actions {
+    display: flex;
+
+    @media screen and (max-width: 749px) {
+      justify-self: flex-end;
+    }
+  }
+
+  @media screen and (min-width: 750px) {
+    .header-actions--text {
+      gap: var(--gap-xl);
+    }
+
+    .header-actions__text-style {
+      font-size: var(--header-actions-font-size);
+      font-family: var(--header-actions-font-family);
+      font-weight: var(--header-actions-font-weight);
+      text-transform: var(--header-actions-text-case);
+    }
+  }
+
+  #header-component[data-menu-style='drawer'] header-actions {
+    justify-self: flex-end;
+  }
+
+  .header__column--right header-actions {
+    margin-inline-start: 0; /*calc(var(--gap-md) * -1)*/
+  }
+
+  .header-actions__cart-icon {
+    --cart-bubble-size: 20px;
+    --cart-bubble-top: -4.5px;
+    --cart-bubble-right: -7px;
+
+    position: relative;
+  }
+
+  .header-actions__cart-icon .cart-bubble {
+    position: absolute;
+    width: 15px;
+    top: var(--cart-bubble-top);
+    right: var(--cart-bubble-right);
+  }
+
+  @media screen and (min-width: 750px) {
+     .header-actions__cart-icon {
+      padding-left: 0.8rem;
+    }
+
+
+    .header-actions__cart-icon--text.header-actions__cart-icon .cart-bubble {
+      position: relative;
+      top: 0;
+      width: var(--cart-bubble-size, 20px);
+    }
+  }
+
+  .cart-drawer__heading .cart-bubble {
+    width: fit-content;
+    border-radius: var(--style-border-radius-buttons-primary);
+    aspect-ratio: auto;
+    padding: var(--cart-padding);
+  }
+
+  .cart-drawer__heading .cart-bubble[data-maintain-ratio] {
+    width: min(1lh, 22px);
+    height: min(1lh, 22px);
+  }
+
+  .header-actions__cart-icon .cart-bubble__text,
+  .cart-drawer__heading .cart-bubble__text {
+    font-family: var(--font-paragraph--family);
+    font-weight: var(--font-paragraph--weight);
+  }
+
+  .header-actions__cart-icon.header-actions__cart-icon--has-cart svg {
+    /* Create donut mask where the cart bubble sits */
+    mask: radial-gradient(
+      calc(var(--cart-bubble-size) + 2px) at calc(100% - var(--cart-bubble-right)) var(--cart-bubble-top),
+      transparent 45.45%,
+      #fff 45.45%,
+      #fff 100%
+    );
+  }
+
+  .cart-drawer__heading .cart-bubble__background {
+    background-color: rgb(var(--color-foreground-rgb) / var(--opacity-10-25));
+  }
+
+  .cart-drawer__heading .cart-bubble__text {
+    color: var(--color-foreground);
+    font-size: clamp(var(--font-size--3xs), 0.75em, var(--font-size--xs));
+  }
+
+  .cart-bubble--animating .cart-bubble__background {
+    animation: grow var(--animation-speed) var(--animation-easing);
+  }
+
+  .cart-bubble--animating .cart-bubble__text {
+    --start-y: -1em;
+    --start-opacity: 1;
+    /* Set initial transform state before animation starts */
+    transform: translate(0, var(--start-y, -1em));
+    opacity: var(--start-opacity, 1);
+    animation: move-and-fade var(--animation-speed) var(--animation-easing);
+  }
+
+  cart-icon:has(.cart-bubble__text-count:empty) {
+    --cart-bubble-size: 10px;
+    --cart-bubble-top: 9px;
+    --cart-bubble-right: 9px;
+
+    .svg-wrapper {
+      --cart-bubble-top: 4px;
+      --cart-bubble-right: 4px;
+    }
+  }
+
+  @media screen and (min-width: 750px) {
+    cart-icon.header-actions__cart-icon--text:has(.cart-bubble__text-count:empty) {
+      --cart-bubble-right: 2.5px;
+    }
+  }
+
+  @media screen and (prefers-reduced-motion: no-preference) {
+    html:active-view-transition-type(empty-cart-drawer) {
+      .cart-drawer__close-button {
+        view-transition-name: cart-drawer-close-button;
+      }
+
+      .cart-items-component {
+        view-transition-name: cart-drawer-content;
+      }
+    }
+  }
+
+  :active-view-transition {
+    .cart-drawer__header,
+    .cart-drawer__content {
+      background: transparent;
+    }
+  }
+
+  ::view-transition-old(cart-drawer-content) {
+    transform-origin: 50% 33%;
+    animation: cart-contents-old var(--spring-d280-b0-duration) var(--spring-d280-b0-easing) forwards;
+  }
+
+  ::view-transition-new(cart-drawer-content) {
+    transform-origin: top center;
+    animation: cart-contents-new var(--spring-d280-b0-duration) var(--spring-d280-b0-easing) forwards;
+  }
+
+  @keyframes cart-contents-old {
+    to {
+      scale: 0.92;
+      opacity: 0;
+    }
+  }
+
+  @keyframes cart-contents-new {
+    from {
+      scale: 1.05;
+      translate: 0 128px;
+      filter: blur(1px);
+      opacity: 0;
+    }
+  }
+  .header-actions__text {
+    display: flex;
+    align-items: center;
+  }
+
+  @media screen and (min-width: 750px) {
+    .header-actions__cart-icon--text {
+      display: flex;
+      align-items: center;
+      gap: var(--gap-xs);
+    }
+
+    .header__column--right .header-actions--text {
+      margin-inline-start: 0;
+    }
+  }
+
+  .cart-drawer__secure-transactions ul {
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    padding: 0;
+    align-items: center;
+  }
+
+  .cart-drawer__secure-transactions span { 
+    text-align: center;
+  }
+
+  .cart-drawer__secure-transactions {
+    width: 100%;
+    text-align: center;
+    padding-top: 15px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+  }
+{% endstylesheet %}

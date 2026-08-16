@@ -1,0 +1,162 @@
+{%- comment -%}
+  Product "Features" icon row (asset-file driven).
+
+  Mirrors the old theme's <ul class="prd-DetailContent_Features"> markup and
+  layout, but resolves icons by FILENAME instead of the old
+  shop.metafields.product_icons lookup table.
+
+  How it works
+  ------------
+  1. The product metafield `features.features` (single line text) holds a
+     pipe-delimited list of IDs, e.g. "made-by-hand|natural-materials".
+  2. For each ID we load the theme asset file "<id>.svg" (see `icon_ext`).
+     -> ID "made-by-hand" outputs assets/made-by-hand.svg
+  3. The caption is derived from the ID ("made-by-hand" -> "Made by hand").
+     Add a `when` branch to `title_overrides` for any special casing.
+  4. If the asset file is missing, the feature hides itself (onerror), so an
+     unknown ID never shows a broken image.
+
+  Accepts:
+  - product: {Object} Product object (required)
+{%- endcomment -%}
+
+{%- liquid
+  assign features = product.metafields.features.features | split: '|'
+  assign max_features = 4
+  assign icon_ext = '.svg'
+-%}
+
+{%- if features.size > 0 -%}
+  <ul class="prd-DetailContent_Features">
+    {%- for raw_id in features limit: max_features -%}
+      {%- assign feature_id = raw_id | strip -%}
+      {%- if feature_id == blank -%}{%- continue -%}{%- endif -%}
+
+      {%- comment -%} Icon file: assets/<id>.svg {%- endcomment -%}
+      {%- assign icon_url = feature_id | append: icon_ext | asset_url -%}
+
+      {%- comment -%}
+        Caption text. By default the filename is humanised
+        ("made-by-hand" -> "Made by hand"). To control the EXACT wording and
+        casing (e.g. "FSC" in caps), add / edit a `when` line below.
+      {%- endcomment -%}
+      {%- assign feature_title = feature_id | replace: '-', ' ' | capitalize -%}
+      {%- case feature_id -%}
+        {%- when 'british-made' -%}{%- assign feature_title = 'British <br>Made' -%}
+        {%- when 'made-by-hand' -%}{%- assign feature_title = 'Made By <br>Hand' -%}
+        {%- when 'fsc-certified' -%}{%- assign feature_title = 'FSC <br>Certified' -%}
+        {%- when 'made-to-order' -%}{%- assign feature_title = 'Made to <br>Order' -%}
+        {%- when 'plant-based-materials' -%}{%- assign feature_title = 'Natural <br>Materials' -%}
+        {%- when 'consciously-sourced' -%}{%- assign feature_title = 'Consciously <br>Sourced' -%}
+        {%- when 'made-in-uk' -%}{%- assign feature_title = 'Made in <br>the UK' -%}
+        {%- when 'crafted-from-solid-brass' -%}{%- assign feature_title = 'Crafted From <br>Solid Brass' -%}
+        {%- when 'crafted-from-solid-bronze' -%}{%- assign feature_title = 'Crafted From <br>Solid Bronze' -%}
+        {%- when 'sustainably-packaged' -%}{%- assign feature_title = 'Sustainably <br>Packaged' -%}
+        {%- when 'small-maker-initiative' -%}{%- assign feature_title = 'Small Maker <br>Initiative' -%}
+        {%- when 'small-batch-production' -%}{%- assign feature_title = 'Small Batch <br>Production' -%}
+        {%- when 'recycled-materials' -%}{%- assign feature_title = 'Recycled <br>Materials' -%}
+        {%- when 'okeo-tek-approved' -%}{%- assign feature_title = 'OEKO-TEX <br>Approved' -%}
+        {%- when 'european-maker' -%}{%- assign feature_title = 'European <br>Maker' -%}
+        {%- when 'entirely-waterproof' -%}{%- assign feature_title = 'Weather-<br>proof' -%}
+        {%- when 'dishwasher-friendly' -%}{%- assign feature_title = 'Dishwasher <br>Friendly' -%}
+        {%- when 'audited-by-us' -%}{%- assign feature_title = 'Audited <br>By Us' -%}
+      {%- endcase -%}
+
+      <li class="prd-DetailContent_Feature prd-DetailContent_Feature-{{ feature_id }} fz-12_14">
+        <div class="prd-DetailContent_FeatureIcon">
+          <img
+            class="prd-DetailContent_FeatureImage"
+            src="{{ icon_url }}"
+            alt="{{ feature_title | escape }}"
+            loading="lazy"
+            onerror="this.closest('.prd-DetailContent_Feature').style.display='none'"
+          >
+        </div>
+        <div class="prd-DetailContent_FeatureText">{{ feature_title }}</div>
+      </li>
+    {%- endfor -%}
+  </ul>
+{%- endif -%}
+
+{%- comment -%}
+  Layout copied from the old theme:
+    - Mobile: icon stacked above text, centred, features share the row equally.
+    - Desktop (>=768px): icon left of text, each feature 25% wide (4 across),
+      left-aligned.
+{%- endcomment -%}
+{% stylesheet %}
+  .prd-DetailContent_Features {
+    --features-gutter: 5px;
+    margin-top: 25px;
+    padding: 0;
+    list-style-type: none;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    margin-right: calc(var(--features-gutter) * -1);
+    margin-left: calc(var(--features-gutter) * -1);
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .prd-DetailContent_Feature {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-grow: 1;
+    width: auto;
+    margin: 0 var(--features-gutter);
+    padding-left: 0;
+    text-align: center;
+  }
+
+  .prd-DetailContent_Feature:before {
+    display: none;
+  }
+
+  .prd-DetailContent_FeatureIcon {
+    flex-shrink: 0;
+    width: 25px;
+    margin-bottom: calc(var(--features-gutter) * 2);
+  }
+
+  .prd-DetailContent_FeatureIcon img,
+  .prd-DetailContent_FeatureImage {
+    display: block;
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+  }
+
+  .prd-DetailContent_FeatureText {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 0.75rem;
+    line-height: 0.875rem;
+    overflow-wrap: break-word;
+  }
+
+  @media (min-width: 768px) {
+    .prd-DetailContent_Features {
+      margin-top: 35px;
+    }
+
+    .prd-DetailContent_Feature {
+      flex-direction: row;
+      align-items: center;
+      flex-grow: 0;
+      width: 25%;
+      margin: 0 0 10px 0;
+      text-align: left;
+    }
+
+    .prd-DetailContent_FeatureIcon {
+      width: 27px;
+      margin: 0 calc(var(--features-gutter) * 2) 0 0;
+    }
+  }
+  .prd-DetailContent_Feature-plant-based-materials img {
+    width: 60%;
+    margin: auto;
+  }
+{% endstylesheet %}

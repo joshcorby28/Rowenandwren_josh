@@ -1,0 +1,52 @@
+{%- doc -%}
+  Renders a scroll-linked progress bar for the carousel section.
+
+  The bar reflects the horizontal scroll position of the sibling
+  `slideshow-slides` scroller. Behaviour lives in `carousel-progress.js`.
+
+  @example
+  {% render 'carousel-progress' %}
+{%- enddoc -%}
+
+<carousel-progress class="carousel-progress" role="presentation" aria-hidden="true" hidden>
+  <span class="carousel-progress__bar"></span>
+</carousel-progress>
+
+<script
+  src="{{ 'carousel-progress.js' | asset_url }}"
+  type="module"
+  fetchpriority="low"
+></script>
+
+{% stylesheet %}
+  .carousel-progress {
+    display: block;
+    position: relative;
+    width: 100%;
+    height: 1px;
+    margin-block-start: 2.4rem;
+    border-radius: 2px;
+    background-color: rgb(var(--color-foreground-rgb) / 0.1);
+    overflow: hidden;
+  }
+
+  .carousel-progress[hidden] {
+    display: none;
+  }
+
+  .carousel-progress__bar {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-start: var(--carousel-progress-offset, 0%);
+    height: 100%;
+    width: var(--carousel-progress-width, 0%);
+    border-radius: inherit;
+    background-color: rgb(var(--color-foreground-rgb));
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .carousel-progress__bar {
+      transition: inset-inline-start 0.1s linear;
+    }
+  }
+{% endstylesheet %}

@@ -1,0 +1,352 @@
+{% capture submit_button %}
+  {% content_for 'block', type: 'contact-form-submit-button', id: 'submit-button' %}
+{% endcapture %}
+
+<div
+  class="
+    contact-form
+    spacing-style size-style
+    {% if block.settings.inherit_color_scheme == false %}color-{{ block.settings.color_scheme }}{% endif %}
+  "
+  style="
+    {% render 'spacing-style', settings: block.settings %}
+    {% render 'size-style', settings: block.settings %}
+  "
+  {{ block.shopify_attributes }}
+>
+  {% assign form_id = block.id | default: section.id | prepend: 'ContactForm-' %}
+  {%- form 'contact', id: form_id, class: 'contact-form__form' -%}
+    <input
+      name="contact[id]"
+      type="hidden"
+      value="{{ form_id }}"
+    >
+
+    {%- if form.errors and form.id == form_id -%}
+      <div
+        class="contact-form__error"
+        tabindex="-1"
+        autofocus
+      >
+        {{- 'icon-error.svg' | inline_asset_content -}}
+
+        {{- form.errors.translated_fields.email | capitalize }}
+        {{ form.errors.messages.email -}}
+      </div>
+    {%- endif -%}
+
+    {%- if form.posted_successfully? and form.id == form_id -%}
+      <div
+        class="contact-form__success"
+        tabindex="-1"
+        autofocus
+      >
+        {{- 'icon-checkmark.svg' | inline_asset_content -}}
+        {{- 'blocks.contact_form.post_success' | t -}}
+      </div>
+    {%- endif -%}
+
+
+      <label
+        class="visually-hidden"
+        for="ContactForm-firstname"
+      >
+        First Name*
+      </label>
+      <input
+        type="text"
+        id="ContactForm-firstname"
+        class="contact-form__input"
+        autocomplete="name"
+        name="contact[first_name]"
+        value=""
+        placeholder="First Name*"
+      >
+
+      <label
+        class="visually-hidden"
+        for="ContactForm-lastname"
+      >
+        Last Name
+      </label>
+      <input
+        type="text"
+        id="ContactForm-lastname"
+        class="contact-form__input"
+        autocomplete="name"
+        name="contact[last_name]"
+        value=""
+        placeholder="Last Name"
+      >
+
+      <label
+        class="visually-hidden"
+        for="ContactForm-email"
+      >
+        {{- 'blocks.contact_form.email' | t -}}
+        <span aria-hidden="true">*</span></label
+      >
+      <input
+        type="email"
+        id="ContactForm-email"
+        class="contact-form__input"
+        autocomplete="email"
+        name="contact[email]"
+        spellcheck="false"
+        autocapitalize="off"
+        value="{% if form.email %}{{ form.email }}{% elsif customer %}{{ customer.email }}{% endif %}"
+        aria-required="true"
+        {% if form.errors contains 'email' and form.id == form_id %}
+          aria-invalid="true"
+          aria-describedby="ContactForm-email-error"
+        {% endif %}
+        placeholder="{{ 'blocks.contact_form.email' | t }}"
+      >
+
+
+    <label
+      class="visually-hidden"
+      for="ContactForm-phone"
+    >
+      {{- 'blocks.contact_form.phone' | t -}}
+    </label>
+    <input
+      type="tel"
+      id="ContactForm-phone"
+      class="contact-form__input"
+      autocomplete="tel"
+      name="contact[phone]"
+      pattern="[0-9\-]*"
+      value="{% if form.phone %}{{ form.phone }}{% elsif customer %}{{ customer.phone }}{% endif %}"
+      placeholder="{{ 'blocks.contact_form.phone' | t }}"
+    >
+
+    <label class="visually-hidden" for="ContactForm-country">
+    Country
+    </label>
+
+    <select
+      class="contact-form__input contact-form__input--select"
+      name="contact[country]"
+      id="ContactForm-country"
+    >
+      <option>Country</option>
+      {{ country_option_tags }}
+    </select>
+
+    <label class="visually-hidden" for="ContactForm-subject">Subject*</label>
+    <input
+      type="text"
+      id="ContactForm-subject"
+      class="contact-form__input"
+      name="contact[subject]"
+      value=""
+      placeholder="Subject*"
+    >
+
+    <label
+      class="visually-hidden"
+      for="ContactForm-body"
+    >
+      {{- 'blocks.contact_form.comment' | t -}}
+    </label>
+    <textarea
+      rows="10"
+      id="ContactForm-body"
+      class="contact-form__input contact-form__input--textarea"
+      name="contact[body]"
+      placeholder="{{ 'blocks.contact_form.comment' | t }}"
+    >
+      {{- form.body -}}
+    </textarea>
+
+    {{ submit_button }}
+  {%- endform -%}
+</div>
+
+{% stylesheet %}
+  .contact-form__form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-md);
+  }
+
+  .contact-form__form-row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-md);
+
+    @media screen and (min-width: 750px) {
+      flex-direction: row;
+      align-items: center;
+    }
+  }
+
+  .contact-form__input {
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--color-input-text);
+    background-color: var(--color-input-background);
+    padding: 12px 15px;
+    border-radius: var(--style-border-radius-inputs);
+    border: 1px solid rgba(0,0,0,0.1);
+    -webkit-font-smoothing: antialiased;
+    font-weight: 400;
+    font-size: 0.8125rem;
+    letter-spacing: .01875rem;
+    line-height: 1.375rem;
+    height: 46px;
+  }
+
+  .contact-form__input--textarea {
+    min-height: 92px;
+    height: auto;
+    resize: none;
+  }
+
+  .contact-form__input--select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6' color='%23717171'%3E%3Cpath fill='currentColor' fill-rule='evenodd' d='M0 .668a.69.69 0 00.183.471l4.375 4.665A.605.605 0 005 6c.166 0 .325-.07.442-.196l4.375-4.665a.698.698 0 000-.942.598.598 0 00-.884 0L4.998 4.388 1.065.195A.596.596 0 00.385.05.667.667 0 000 .666v.002z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 15px center;
+    background-size: 10px 6px;
+    padding-right: 35px;
+    cursor: pointer;
+  }
+
+  .contact-form__error,
+  .contact-form__success {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-xs);
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:names.contact_form",
+  "tag": null,
+  "settings": [
+    {
+      "type": "select",
+      "id": "width",
+      "label": "t:settings.width_desktop",
+      "options": [
+        {
+          "value": "fit-content",
+          "label": "t:options.fit_content"
+        },
+        {
+          "value": "custom",
+          "label": "t:options.custom"
+        }
+      ],
+      "default": "fit-content"
+    },
+    {
+      "type": "range",
+      "id": "custom_width",
+      "label": "t:settings.width",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 100,
+      "visible_if": "{{ block.settings.width == 'custom' }}"
+    },
+    {
+      "type": "select",
+      "id": "width_mobile",
+      "label": "t:settings.width_mobile",
+      "options": [
+        {
+          "value": "fit-content",
+          "label": "t:options.fit_content"
+        },
+        {
+          "value": "custom",
+          "label": "t:options.custom"
+        }
+      ],
+      "default": "fit-content"
+    },
+    {
+      "type": "range",
+      "id": "custom_width_mobile",
+      "label": "t:settings.width",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 100,
+      "visible_if": "{{ block.settings.width_mobile == 'custom' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "inherit_color_scheme",
+      "label": "t:settings.inherit_color_scheme",
+      "default": true
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:settings.color_scheme",
+      "default": "scheme-1",
+      "visible_if": "{{ block.settings.inherit_color_scheme == false }}"
+    },
+    {
+      "type": "header",
+      "content": "t:content.padding"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start",
+      "label": "t:settings.left",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end",
+      "label": "t:settings.right",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.contact_form",
+      "category": "t:categories.forms"
+    }
+  ]
+}
+{% endschema %}

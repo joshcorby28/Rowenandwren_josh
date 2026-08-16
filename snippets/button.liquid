@@ -1,0 +1,66 @@
+{%- doc -%}
+  Intended for use in a block similar to the button block.
+
+  @param {string} link - link to render
+  @param {object} [block] - The block
+
+  @example
+  {% render 'button', link: '/collections/all' %}
+{%- enddoc -%}
+
+{% assign block_settings = block.settings %}
+
+<a
+  {% if link == blank %}
+    role="link"
+    aria-disabled="true"
+  {% else %}
+    href="{{ link }}"
+  {% endif %}
+  class="
+    size-style
+    {{ block_settings.style_class }}
+    {{ block_settings.style_class }}--{{ block.id }}
+  "
+  style="{% render 'size-style', settings: block_settings %}"
+  {%- if block_settings.open_in_new_tab -%}
+    target="_blank"
+    rel="noopener noreferrer"
+  {%- endif -%}
+  {{ block.shopify_attributes }}
+>
+  <span>{{ block_settings.label }}</span>
+</a>
+
+{% stylesheet %}
+  .link {
+    text-decoration: none;
+    text-decoration-color: currentcolor;
+    text-transform: uppercase;
+    position: relative;
+
+  }
+  .link:after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 2px;
+    left: 0;
+    display: block;
+    height: 1px;
+    background-color: currentColor;
+    backface-visibility: hidden;
+    will-change: transform;
+    transform: scale(0);
+    transform-origin: 100% 0;
+    transition: transform .5s ease;
+  }
+  .link:hover::after {
+    transform: scale(1);
+    transform-origin: 0 0;
+  }
+  .image-block:hover .link::after {
+    transform: scale(1);
+    transform-origin: 0 0;
+  }
+{% endstylesheet %}

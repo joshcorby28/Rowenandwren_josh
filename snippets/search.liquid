@@ -1,0 +1,91 @@
+{%- doc -%}
+  Renders the search action toggle button.
+
+  This button is a header dropdown toggle (data-el="header.dropdownToggle",
+  data-dropdown-id="search"). It is wired to the shared header controller
+  (assets/header-header.js), which opens/closes the search dropdown panel
+  the same way it does the main navigation dropdown. The panel itself is
+  rendered once, in sections/header.liquid, via snippets/search-panel.liquid.
+
+  The button may be rendered more than once (desktop + mobile drawer order);
+  multiple toggles sharing data-dropdown-id="search" all control the single
+  panel and are kept in sync by the controller.
+
+  @param {string} [style] - The style of the search action.
+  @param {string} [class] - Additional classes for the search action.
+  @param {string} [display_style] - The display style ('icon' or 'text').
+
+  @example
+  {% render 'search', style: 'default', class: 'custom-class', display_style: 'icon' %}
+{%- enddoc -%}
+
+{% unless style == 'none' %}
+  <div
+    class="search-action{% if display_style == 'text' %} search-action--text{% endif %}{% if class != blank %} {{ class | strip }}{% endif %}"
+  >
+    <button
+      type="button"
+      class="button-unstyled header-actions__action{% if display_style == 'text' %} header-actions__text-style{% endif %}"
+      data-el="header.dropdownToggle"
+      data-dropdown-id="search"
+      aria-controls="header-dropdown-search"
+      aria-expanded="false"
+      aria-label="{{ 'content.search_input_label' | t }}"
+    >
+      <span class="{% if display_style == 'icon' %}hidden{% else %}mobile:hidden{% endif %}">
+        {{ 'content.search' | t }}
+      </span>
+
+      <span class="svg-wrapper {% if display_style != 'icon' %}desktop:hidden{% endif %}">
+        <svg viewBox="0 0 17 19" fill="none" xmlns="http://www.w3.org/2000/svg"><path clip-rule="evenodd" d="M13.74 7.37A6.37 6.37 0 111 7.369a6.37 6.37 0 0112.74 0z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.593 13.097l4.754 4.754" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+    </button>
+  </div>
+{% endunless %}
+
+{% stylesheet %}
+  .search-action {
+    --search-border-radius: var(--style-border-radius-inputs);
+    --search-border-width: var(--style-border-width-inputs);
+
+    display: flex;
+  }
+
+  @media screen and (max-width: 749px) {
+    .search-action--hidden-on-drawer {
+      display: none;
+    }
+  }
+
+  @media screen and (min-width: 750px) {
+    [data-menu-style='drawer'] .search-action--hidden-on-drawer {
+      display: none;
+    }
+
+    [data-menu-style='menu'] .search-action--hidden-on-menu {
+      display: none;
+    }
+  }
+
+  [data-menu-style='menu'] .header__column--left .search-action {
+    @media screen and (min-width: 750px) {
+      margin-inline: calc(var(--padding-lg) * -1);
+    }
+  }
+
+  .header__column--right .search-action {
+    @media screen and (min-width: 750px) {
+      margin-inline: 0; /*calc(var(--gap-md) * -1) calc(var(--gap-xs) * -1);*/
+    }
+  }
+
+  @media screen and (min-width: 750px) {
+    .header__column--right .search-action--text {
+      margin-inline: 0;
+    }
+
+    [data-menu-style='menu'] .header__column--left .search-action--text {
+      margin-inline: 0;
+    }
+  }
+{% endstylesheet %}

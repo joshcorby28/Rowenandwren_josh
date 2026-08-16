@@ -1,0 +1,30 @@
+{%- doc -%}
+  An image paired with a title, body text and optional caption.
+
+  @param {object} [upsell_image] - image metafield object
+  @param {string} [upsell_caption] - caption text
+  @param {string} [upsell_title] - heading text
+  @param {string} [upsell_text] - rich-text body
+{%- enddoc -%}
+
+<div class="art-ImageText">
+  {%- if upsell_image != blank -%}
+    <div class="art-ImageText_Media">
+      {%- render 'article-upsell-image', image: upsell_image, class: 'art-ImageText_Img', alt: upsell_title -%}
+    </div>
+  {%- endif -%}
+
+  <div class="art-ImageText_Content">
+    {%- if upsell_title != blank -%}
+      <h3 class="art-ImageText_Title">{{ upsell_title }}</h3>
+    {%- endif -%}
+
+    {%- if upsell_text != blank -%}
+      <div class="art-ImageText_Text rte">{{ upsell_text }}</div>
+    {%- endif -%}
+
+    {%- if upsell_caption != blank -%}
+      <span class="art-ImageText_Caption">{{ upsell_caption }}</span>
+    {%- endif -%}
+  </div>
+</div>

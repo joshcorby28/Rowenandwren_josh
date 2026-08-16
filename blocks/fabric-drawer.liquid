@@ -1,0 +1,681 @@
+{%- liquid
+  assign product = closest.product
+  if request.visual_preview_mode and product == blank
+    assign product = collections.all.products.first
+  endif
+
+  assign block_settings = block.settings
+  assign other_fabrics = product.metafields.custom.other_fabrics.value
+  assign global_settings = shop.metaobjects.fabric_groups['fabric-groups-main']
+
+  assign product_title_split = product.title | split: ','
+  assign product_base_title = product_title_split | first | strip
+  assign current_fabric_name = product_title_split | last | strip
+-%}
+
+{%- if other_fabrics != blank and global_settings != blank -%}
+  {%- liquid
+    assign component_id = 'FabricDrawer-' | append: section.id | append: '-' | append: block.id
+    assign fabric_count = 0
+    assign curr_fabric_image = blank
+  -%}
+
+  {%- capture drawer_groups -%}
+    {%- for group in global_settings.groups.value -%}
+      {%- assign group_count = 0 -%}
+      {%- assign group_title = group.title.value -%}
+      {%- assign group_description = group.description | metafield_tag -%}
+
+      {%- capture group_content -%}
+        {%- for fabric in global_settings.fabrics.value -%}
+          {%- assign fabric_group_val = fabric.group.value | strip -%}
+          {%- if fabric_group_val != group_title -%}{%- continue -%}{%- endif -%}
+
+          {%- comment -%}
+            Match this fabric against the product's `other_fabrics` list.
+            Entries in `other_fabrics` are full product titles shaped like
+            "Base Title, Fabric Name". We test against `fabric.key` first
+            then fall back to each alternate key in `fabric.keys`.
+          {%- endcomment -%}
+          {%- assign found_title = blank -%}
+          {%- assign title_search = product_base_title | append: ', ' | append: fabric.key.value -%}
+          {%- for prod_title in other_fabrics -%}
+            {%- if prod_title == title_search -%}
+              {%- assign found_title = prod_title -%}
+              {%- break -%}
+            {%- endif -%}
+          {%- endfor -%}
+
+          {%- if found_title == blank and fabric.keys.value != blank -%}
+            {%- for key in fabric.keys.value -%}
+              {%- assign alt_search = product_base_title | append: ', ' | append: key -%}
+              {%- for prod_title in other_fabrics -%}
+                {%- if prod_title == alt_search -%}
+                  {%- assign found_title = prod_title -%}
+                  {%- break -%}
+                {%- endif -%}
+              {%- endfor -%}
+              {%- if found_title != blank -%}{%- break -%}{%- endif -%}
+            {%- endfor -%}
+          {%- endif -%}
+
+          {%- if found_title == blank -%}{%- continue -%}{%- endif -%}
+
+          {%- assign found_handle = found_title | handleize -%}
+          {%- assign found_product = all_products[found_handle] -%}
+          {%- assign is_current = false -%}
+          {%- if product.handle == found_handle -%}
+            {%- assign is_current = true -%}
+          {%- endif -%}
+
+          {%- assign fabric_image = fabric.swatch.value -%}
+          {%- if is_current and fabric_image != blank -%}
+            {%- assign curr_fabric_image = fabric_image -%}
+          {%- endif -%}
+
+          {%- assign group_count = group_count | plus: 1 -%}
+          {%- assign fabric_count = fabric_count | plus: 1 -%}
+
+          {%- if found_product.url != blank -%}
+            {%- assign tile_url = found_product.url -%}
+          {%- else -%}
+            {%- assign tile_url = '/products/' | append: found_handle -%}
+          {%- endif -%}
+
+          <button
+            type="button"
+            class="fabric-drawer__item"
+            data-selected="{{ is_current }}"
+            data-name="{{ fabric.name.value | default: fabric.key.value | escape }}"
+            data-url="{{ tile_url }}"
+            data-handle="{{ found_handle }}"
+            aria-pressed="{{ is_current }}"
+            on:click="/selectFabric"
+          >
+            <span class="fabric-drawer__item-image">
+              {%- if fabric_image != blank -%}
+                {{ fabric_image | image_url: width: 300 | image_tag: loading: 'lazy', alt: fabric.name.value }}
+              {%- endif -%}
+            </span>
+            <span class="fabric-drawer__item-title">{{ fabric.name.value }}</span>
+            {%- if fabric.byline.value != blank -%}
+              <span class="fabric-drawer__item-byline">{{ fabric.byline.value }}</span>
+            {%- endif -%}
+            {%- if fabric.rub_count.value != blank -%}
+              <span class="fabric-drawer__item-count">Rub Count: {{ fabric.rub_count.value }}</span>
+            {%- endif -%}
+            <span class="fabric-drawer__item-toggle" aria-hidden="true">
+              <span class="fabric-drawer__item-toggle-yes">{%- render 'icon-fabric-check' -%}</span>
+              <span class="fabric-drawer__item-toggle-no">{%- render 'icon-fabric-plus' -%}</span>
+            </span>
+          </button>
+        {%- endfor -%}
+      {%- endcapture -%}
+
+      {%- if group_count > 0 -%}
+        <section class="fabric-drawer__group">
+          <h4 class="fabric-drawer__group-title">{{ group_title }}</h4>
+          {%- if group_description != blank -%}
+            <div class="fabric-drawer__group-description">{{ group_description }}</div>
+          {%- endif -%}
+          <div class="fabric-drawer__group-items">{{ group_content }}</div>
+        </section>
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endcapture -%}
+
+  {%- if fabric_count > 0 -%}
+    <fabric-drawer-component
+      id="{{ component_id }}"
+      class="fabric-drawer"
+      data-current-handle="{{ product.handle }}"
+      {{ block.shopify_attributes }}
+    >
+      <button
+        type="button"
+        class="fabric-drawer__trigger"
+        on:click="/showDialog"
+        aria-haspopup="dialog"
+        aria-controls="{{ component_id }}-dialog"
+      >
+        <span class="fabric-drawer__trigger-image">
+          {%- if curr_fabric_image != blank -%}
+            {{ curr_fabric_image | image_url: width: 120 | image_tag: loading: 'lazy', alt: current_fabric_name }}
+          {%- endif -%}
+        </span>
+        <span class="fabric-drawer__trigger-text">
+          <span class="fabric-drawer__trigger-title">
+            {{ block_settings.button_label | default: 'Choose a fabric' }}
+            {%- if block_settings.show_count -%}
+              <span class="fabric-drawer__trigger-count">({{ fabric_count }} available)</span>
+            {%- endif -%}
+          </span>
+          <span class="fabric-drawer__trigger-subtitle">{{ current_fabric_name }}</span>
+        </span>
+        <span class="fabric-drawer__trigger-arrow" aria-hidden="true">
+          {%- render 'icon-fabric-arrow-right' -%}
+        </span>
+      </button>
+
+      <dialog
+        id="{{ component_id }}-dialog"
+        ref="dialog"
+        class="fabric-drawer__dialog dialog-drawer"
+        aria-labelledby="{{ component_id }}-title"
+      >
+        <header class="fabric-drawer__header">
+          <h3 id="{{ component_id }}-title" class="fabric-drawer__title">
+            {{ block_settings.drawer_heading | default: 'Choose a fabric' }}
+          </h3>
+          <button
+            type="button"
+            class="fabric-drawer__close button-unstyled"
+            on:click="/closeDialog"
+            aria-label="{{ 'accessibility.close' | t | default: 'Close' }}"
+          >
+            <span class="svg-wrapper">{%- render 'icon-fabric-close' -%}</span>
+          </button>
+        </header>
+
+        {%- if block_settings.show_render_image -%}
+          <div class="fabric-drawer__render">
+            {%- if product.metafields.custom.render_image.value != blank -%}
+              <img
+                ref="renderImage"
+                class="fabric-drawer__render-image"
+                src="{{ product.metafields.custom.render_image.value | image_url: width: 900 }}"
+                alt="{{ product.metafields.custom.render_image.value.alt | default: product.title }}"
+                data-handle="{{ product.handle }}"
+              >
+            {%- endif -%}
+
+            {%- if product.metafields.custom.render_image.value != blank
+              and product.metafields.custom.product_dimensions.value != blank -%}
+              <button
+                type="button"
+                class="fabric-drawer__dimensions-toggle"
+                on:click="/toggleDimensions"
+                aria-expanded="false"
+              >
+                {%- render 'icon-fabric-ruler' -%}
+                <span>Product Dimensions</span>
+              </button>
+              <div class="fabric-drawer__dimensions" ref="dimensions" hidden>
+                {{ product.metafields.custom.product_dimensions.value }}
+              </div>
+            {%- endif -%}
+          </div>
+        {%- endif -%}
+
+        <div class="fabric-drawer__content">
+          {{ drawer_groups }}
+        </div>
+
+        <footer class="fabric-drawer__footer">
+          <div class="fabric-drawer__current" ref="current">
+            <span class="fabric-drawer__current-image">
+              {%- if curr_fabric_image != blank -%}
+                <img
+                  ref="currentImage"
+                  src="{{ curr_fabric_image | image_url: width: 60 }}"
+                  alt="{{ current_fabric_name }}"
+                >
+              {%- else -%}
+                <img ref="currentImage" src="" alt="" hidden>
+              {%- endif -%}
+            </span>
+            <span class="fabric-drawer__current-name" ref="currentName">{{ current_fabric_name }}</span>
+          </div>
+          <button
+            type="button"
+            class="fabric-drawer__confirm button"
+            ref="confirmButton"
+            on:click="/confirmSelection"
+            disabled
+          >
+            {{ block_settings.confirm_label | default: 'Confirm Selection' }}
+          </button>
+        </footer>
+      </dialog>
+    </fabric-drawer-component>
+
+    <script type="module" src="{{ 'fabric-drawer-component.js' | asset_url }}"></script>
+  {%- endif -%}
+{%- endif -%}
+
+{% stylesheet %}
+  .fabric-drawer {
+    display: block;
+    width: 100%;
+  }
+
+  .fabric-drawer__trigger {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+    padding: 10px 0;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--color-border, rgba(0, 0, 0, 0.1));
+    border-radius: var(--style-border-radius-buttons-primary, 4px);
+    cursor: pointer;
+    text-align: left;
+    color: inherit;
+    font: inherit;
+    transition: background 0.15s ease;
+    transition: padding .3s ease-out;
+  }
+
+  .fabric-drawer__trigger:hover {
+    background: var(--color-background-secondary, rgba(0, 0, 0, 0.04));
+    padding: 10px;
+  }
+
+  .fabric-drawer__trigger-image {
+    flex-shrink: 0;
+    width: 60px;
+    height: 60px;
+    border-radius: 0;
+    overflow: hidden;
+    background: var(--color-background-secondary, #f4f4f4);
+  }
+
+  .fabric-drawer__trigger-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .fabric-drawer__trigger-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .fabric-drawer__trigger-title {
+    font-size: var(--font-paragraph--size);
+    font-weight: 400; 
+    line-height: 1.3125rem;
+    letter-spacing: .0375rem;
+  }
+
+  .fabric-drawer__trigger-count {
+    margin-inline-start: 4px;
+    font-weight: var(--font-weight-regular, 400);
+    color: rgb(var(--color-foreground-rgb, 0 0 0) / var(--opacity-subdued-text, 0.6));
+  }
+
+  .fabric-drawer__trigger-subtitle {
+    color: rgb(var(--color-foreground-rgb, 0 0 0) / var(--opacity-subdued-text, 0.6));
+    font-size: var(--font-paragraph-small--size, 0.8125rem);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .fabric-drawer__trigger-arrow {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    color: rgb(var(--color-foreground-rgb, 0 0 0) / var(--opacity-subdued-text, 0.6));
+  }
+
+  .fabric-drawer__trigger-arrow svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Dialog */
+  .fabric-drawer__dialog {
+    margin: 0 0 0 auto;
+    padding: 0;
+    width: min(610px, 100vw);
+    height: 100dvh;
+    max-height: 100dvh;
+    max-width: 100vw;
+    border: none;
+    background: var(--color-background, #fff);
+    color: var(--color-foreground, #111);
+    inset: 0 0 0 auto;
+  }
+
+  .fabric-drawer__dialog[open] {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .fabric-drawer__dialog::backdrop {
+    background: rgba(0, 0, 0, 0.4);
+  }
+
+  .fabric-drawer__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px;
+    border-block-end: 1px solid var(--color-border, rgba(0, 0, 0, 0.1));
+  }
+
+  .fabric-drawer__title {
+    margin: 0;
+    font-size: 1.5rem;
+  }
+
+  @media screen and (max-width: 749px) {
+    .fabric-drawer__title { font-size: 1.2rem; }
+  }
+
+  .fabric-drawer__close {
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    color: inherit;
+  }
+
+  .fabric-drawer__close .svg-wrapper {
+    display: inline-flex;
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Render image */
+  .fabric-drawer__render {
+    position: relative;
+    padding: 20px;
+    text-align: center;
+    border-block-end: 1px solid var(--color-border, rgba(0, 0, 0, 0.1));
+  }
+
+  .fabric-drawer__render-image {
+    max-width: 100%;
+    height: auto;
+    max-height: 280px;
+    object-fit: contain;
+  }
+
+  .fabric-drawer__dimensions-toggle {
+    position: absolute;
+    bottom: 12px;
+    inset-inline-end: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    background: transparent;
+    border: 1px solid var(--color-border, rgba(0, 0, 0, 0.1));
+    border-radius: 4px;
+    cursor: pointer;
+    color: inherit;
+  }
+
+  .fabric-drawer__dimensions {
+    margin-top: 8px;
+    padding: 8px;
+    font-size: 0.8125rem;
+    background: var(--color-background-secondary, #f4f4f4);
+    border-radius: 4px;
+  }
+
+  /* Content */
+  .fabric-drawer__content {
+    overflow-y: auto;
+    flex: 1 1 auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .fabric-drawer__group {
+    margin: 0 60px;
+    padding: 40px 0;
+    border-block-end: 1px solid var(--color-border, rgba(0, 0, 0, 0.1));
+  }
+
+  .fabric-drawer__group:last-child { border-block-end: 0; }
+
+  @media screen and (max-width: 749px) {
+    .fabric-drawer__group { margin: 0 20px; padding: 30px 0; }
+  }
+
+  .fabric-drawer__group-title {
+    margin: 0 0 4px;
+    text-transform: uppercase;
+    font-size: 13px;
+    font-weight: 400;
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: .0375rem;
+    line-height: 1.3125rem;
+    font-family: var(--font-paragraph--family);
+  }
+
+  .fabric-drawer__group-description {
+    margin-block-end: 24px;
+    color: var(--color-foreground-secondary, inherit);
+    line-height: 1.3125rem;
+  }
+
+  .fabric-drawer__group-items {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+  }
+
+  /* Item */
+  .fabric-drawer__item {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    padding: 0;
+    text-align: start;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    color: inherit;
+    font: inherit;
+  }
+
+  .fabric-drawer__item-image {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
+    overflow: hidden;
+    background: var(--color-background-secondary, #f4f4f4);
+  }
+
+  .fabric-drawer__item-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .fabric-drawer__item-title {
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    font-weight: 400;
+    margin-top: 8px;
+    font-size: 11px;
+    letter-spacing: .94px;
+  }
+
+  .fabric-drawer__item-byline,
+  .fabric-drawer__item-count {
+    font-size: 0.75rem;
+    color: rgb(var(--color-foreground-rgb, 0 0 0) / var(--opacity-subdued-text, 0.6));
+    font-weight: 300;
+    letter-spacing: .0375rem;
+    line-height: 1.3125rem;
+  }
+
+  .fabric-drawer__item-toggle {
+    position: absolute;
+    top: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease;
+    box-shadow: 0 4px 6px #00000029;
+    right: 0;
+    transform: translate(50%, -50%);
+  }
+
+  .fabric-drawer__item:hover .fabric-drawer__item-toggle,
+  .fabric-drawer__item[data-selected='true'] .fabric-drawer__item-toggle {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .fabric-drawer__item-toggle svg { width: 14px; height: 14px; }
+  .fabric-drawer__item-toggle-yes { display: none; }
+  .fabric-drawer__item[data-selected='true'] .fabric-drawer__item-toggle-yes { display: inline-flex; }
+  .fabric-drawer__item[data-selected='true'] .fabric-drawer__item-toggle-no { display: none; }
+  .fabric-drawer__item[data-selected='true'] .fabric-drawer__item-toggle { background: #e5e5e5; }
+
+  /* Footer */
+  .fabric-drawer__footer {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-block-start: 1px solid var(--color-border, rgba(0, 0, 0, 0.1));
+  }
+
+  .fabric-drawer__current {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .fabric-drawer__current-image img {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 0;
+  }
+
+  .fabric-drawer__current-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .fabric-drawer__confirm[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  @media screen and (max-width: 749px) {
+    .fabric-drawer__dialog { width: 100vw; inset: 0; }
+    .fabric-drawer__group-items { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Fabric drawer",
+  "tag": null,
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Shown only on products with a `custom.other_fabrics` metafield. Pulls fabric data from the `fabric_groups` metaobject entry with handle `fabric-groups-main`. See SETUP-fabric-drawer.md for setup."
+    },
+    {
+      "type": "text",
+      "id": "button_label",
+      "label": "Trigger title",
+      "default": "Choose a fabric"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_count",
+      "label": "Show available count next to title",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "drawer_heading",
+      "label": "Drawer heading",
+      "default": "Choose a fabric"
+    },
+    {
+      "type": "text",
+      "id": "confirm_label",
+      "label": "Confirm button label",
+      "default": "Confirm Selection"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_render_image",
+      "label": "Show product render image in drawer",
+      "info": "Reads `custom.render_image` from each product and swaps it as the user selects fabrics.",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "t:content.padding"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start",
+      "label": "t:settings.left",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end",
+      "label": "t:settings.right",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    }
+  ],
+  "presets": [
+    {
+      "name": "Fabric drawer",
+      "category": "Product"
+    }
+  ]
+}
+{% endschema %}

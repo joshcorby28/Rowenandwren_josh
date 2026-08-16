@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="22px" height="22px" viewBox="0 0 22 22" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Social Media Share</title>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Social-Media-Share" transform="translate(0.500000, 0.500000)" stroke="#717171">
+            <circle id="Oval" cx="16.68" cy="16.68" r="3.56"></circle>
+            <circle id="Oval" cx="3.56" cy="10.11" r="3.56"></circle>
+            <circle id="Oval" cx="16.68" cy="3.56" r="3.56"></circle>
+            <line x1="6.7" y1="8.45" x2="13.49" y2="5.12" id="Path"></line>
+            <line x1="13.48" y1="15.11" x2="6.77" y2="11.63" id="Path"></line>
+        </g>
+    </g>
+</svg>

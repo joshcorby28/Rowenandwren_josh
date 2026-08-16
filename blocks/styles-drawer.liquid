@@ -1,0 +1,483 @@
+{%- liquid
+  assign product = closest.product
+  if request.visual_preview_mode and product == blank
+    assign product = collections.all.products.first
+  endif
+
+  assign block_settings = block.settings
+  assign other_styles = product.metafields.custom.other_styles.value
+
+  comment
+    A product's title is shaped like "Base Title, Style Name". We split off
+    the style name so it can be shown as the trigger subtitle, and match the
+    current product against the `other_styles` list by its full title.
+  endcomment
+  assign product_title_split = product.title | split: ','
+  assign current_style_name = product_title_split | last | strip
+
+  # Optional per-style render image, keyed by product handle.
+  assign current_render = shop.metaobjects.product_style[product.handle].render_image.value
+-%}
+
+{%- if block_settings.enabled and other_styles != blank -%}
+  {%- liquid
+    assign component_id = 'StylesDrawer-' | append: section.id | append: '-' | append: block.id
+    assign style_count = 0
+    assign trigger_image = product.featured_image
+    if current_render != blank
+      assign trigger_image = current_render
+    endif
+  -%}
+
+  {%- capture drawer_items -%}
+    {%- for style_title in other_styles -%}
+      {%- liquid
+        assign style_handle = style_title | handleize
+        assign style_product = all_products[style_handle]
+        if style_product == blank
+          continue
+        endif
+
+        assign is_current = false
+        if style_product.handle == product.handle
+          assign is_current = true
+        endif
+
+        # Prefer a per-style render image, fall back to the product image.
+        assign tile_image = style_product.featured_image
+        assign style_render = shop.metaobjects.product_style[style_product.handle].render_image.value
+        if style_render != blank
+          assign tile_image = style_render
+        endif
+
+        assign style_count = style_count | plus: 1
+      -%}
+      <a
+        class="styles-drawer__item"
+        data-selected="{{ is_current }}"
+        data-name="{{ style_product.title | escape }}"
+        href="{{ style_product.url }}"
+        aria-current="{{ is_current }}"
+      >
+        <span class="styles-drawer__item-image">
+          {%- if tile_image != blank -%}
+            {{ tile_image | image_url: width: 300 | image_tag: loading: 'lazy', alt: style_product.title }}
+          {%- endif -%}
+        </span>
+        <span class="styles-drawer__item-title">{{ style_product.title }}</span>
+        <span class="styles-drawer__item-price">{{ style_product.price | money }}</span>
+        <span class="styles-drawer__item-toggle" aria-hidden="true">
+          <span class="styles-drawer__item-toggle-yes">{%- render 'icon-fabric-check' -%}</span>
+          <span class="styles-drawer__item-toggle-no">{%- render 'icon-fabric-plus' -%}</span>
+        </span>
+      </a>
+    {%- endfor -%}
+  {%- endcapture -%}
+
+  {%- if style_count > 0 -%}
+    <dialog-component
+      id="{{ component_id }}"
+      class="styles-drawer"
+      {{ block.shopify_attributes }}
+    >
+      <button
+        type="button"
+        class="styles-drawer__trigger js-option-step"
+        on:click="/showDialog"
+        aria-haspopup="dialog"
+        aria-controls="{{ component_id }}-dialog"
+      >
+        <span class="styles-drawer__trigger-image">
+          {%- if trigger_image != blank -%}
+            {{ trigger_image | image_url: width: 120 | image_tag: loading: 'lazy', alt: product.title }}
+          {%- endif -%}
+        </span>
+        <span class="styles-drawer__trigger-text">
+          <span class="styles-drawer__trigger-title">
+            {{ block_settings.button_label | default: 'Choose a style' }}
+            {%- if block_settings.show_count -%}
+              <span class="styles-drawer__trigger-count">({{ style_count }} available)</span>
+            {%- endif -%}
+          </span>
+          <span class="styles-drawer__trigger-subtitle">{{ current_style_name }}</span>
+        </span>
+        <span class="styles-drawer__trigger-arrow" aria-hidden="true">
+          {%- render 'icon-fabric-arrow-right' -%}
+        </span>
+      </button>
+
+      <dialog
+        id="{{ component_id }}-dialog"
+        ref="dialog"
+        class="styles-drawer__dialog dialog-drawer"
+        aria-labelledby="{{ component_id }}-title"
+      >
+        <header class="styles-drawer__header">
+          <h3 id="{{ component_id }}-title" class="styles-drawer__title">
+            {{ block_settings.drawer_heading | default: 'Choose a style' }}
+          </h3>
+          <button
+            type="button"
+            class="styles-drawer__close button-unstyled"
+            on:click="/closeDialog"
+            aria-label="{{ 'accessibility.close' | t | default: 'Close' }}"
+          >
+            <span class="svg-wrapper">{%- render 'icon-fabric-close' -%}</span>
+          </button>
+        </header>
+
+        <div class="styles-drawer__content">
+          <div class="styles-drawer__items">{{ drawer_items }}</div>
+        </div>
+      </dialog>
+    </dialog-component>
+  {%- endif -%}
+{%- endif -%}
+
+{% stylesheet %}
+  .styles-drawer {
+    display: block;
+    width: 100%;
+  }
+
+  .styles-drawer__trigger {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+    padding: 10px 0;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--color-border, rgba(0, 0, 0, 0.1));
+    border-radius: var(--style-border-radius-buttons-primary, 4px);
+    cursor: pointer;
+    text-align: left;
+    color: inherit;
+    font: inherit;
+    transition: padding 0.3s ease-out;
+  }
+
+  .styles-drawer__trigger:hover {
+    background: var(--color-background-secondary, rgba(0, 0, 0, 0.04));
+    padding: 10px;
+  }
+
+  .styles-drawer__trigger-image {
+    flex-shrink: 0;
+    width: 60px;
+    height: 60px;
+    overflow: hidden;
+    background: var(--color-background-secondary, #f4f4f4);
+  }
+
+  .styles-drawer__trigger-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .styles-drawer__trigger-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .styles-drawer__trigger-title {
+    font-size: var(--font-paragraph--size);
+    font-weight: 400;
+    line-height: 1.3125rem;
+    letter-spacing: 0.0375rem;
+  }
+
+  .styles-drawer__trigger-count {
+    margin-inline-start: 4px;
+    font-weight: var(--font-weight-regular, 400);
+    color: rgb(var(--color-foreground-rgb, 0 0 0) / var(--opacity-subdued-text, 0.6));
+  }
+
+  .styles-drawer__trigger-subtitle {
+    color: rgb(var(--color-foreground-rgb, 0 0 0) / var(--opacity-subdued-text, 0.6));
+    font-size: var(--font-paragraph-small--size, 0.8125rem);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .styles-drawer__trigger-arrow {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    color: rgb(var(--color-foreground-rgb, 0 0 0) / var(--opacity-subdued-text, 0.6));
+  }
+
+  .styles-drawer__trigger-arrow svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Dialog */
+  .styles-drawer__dialog {
+    margin: 0 0 0 auto;
+    padding: 0;
+    width: min(610px, 100vw);
+    height: 100dvh;
+    max-height: 100dvh;
+    max-width: 100vw;
+    border: none;
+    background: var(--color-background, #fff);
+    color: var(--color-foreground, #111);
+    inset: 0 0 0 auto;
+  }
+
+  .styles-drawer__dialog[open] {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .styles-drawer__dialog::backdrop {
+    background: rgba(0, 0, 0, 0.4);
+  }
+
+  .styles-drawer__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px;
+    border-block-end: 1px solid var(--color-border, rgba(0, 0, 0, 0.1));
+  }
+
+  .styles-drawer__title {
+    margin: 0;
+    font-size: 1.5rem;
+  }
+
+  @media screen and (max-width: 749px) {
+    .styles-drawer__title {
+      font-size: 1.2rem;
+    }
+  }
+
+  .styles-drawer__close {
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    color: inherit;
+  }
+
+  .styles-drawer__close .svg-wrapper {
+    display: inline-flex;
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Content */
+  .styles-drawer__content {
+    overflow-y: auto;
+    flex: 1 1 auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .styles-drawer__items {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+    margin: 0 60px;
+    padding: 40px 0;
+  }
+
+  @media screen and (max-width: 749px) {
+    .styles-drawer__items {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin: 0 20px;
+      padding: 30px 0;
+    }
+  }
+
+  /* Item */
+  .styles-drawer__item {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    text-align: start;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .styles-drawer__item-image {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
+    overflow: hidden;
+    background: var(--color-background-secondary, #f4f4f4);
+  }
+
+  .styles-drawer__item-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .styles-drawer__item-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    font-weight: 400;
+    letter-spacing: 0.94px;
+    margin-top: 8px;
+  }
+
+  .styles-drawer__item-price {
+    font-size: 0.75rem;
+    color: rgb(var(--color-foreground-rgb, 0 0 0) / var(--opacity-subdued-text, 0.6));
+    font-weight: 300;
+    letter-spacing: 0.0375rem;
+    line-height: 1.3125rem;
+  }
+
+  .styles-drawer__item-toggle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease;
+    box-shadow: 0 4px 6px #00000029;
+    transform: translate(50%, -50%);
+  }
+
+  .styles-drawer__item:hover .styles-drawer__item-toggle,
+  .styles-drawer__item[data-selected='true'] .styles-drawer__item-toggle {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .styles-drawer__item-toggle svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .styles-drawer__item-toggle-yes {
+    display: none;
+  }
+
+  .styles-drawer__item[data-selected='true'] .styles-drawer__item-toggle-yes {
+    display: inline-flex;
+  }
+
+  .styles-drawer__item[data-selected='true'] .styles-drawer__item-toggle-no {
+    display: none;
+  }
+
+  .styles-drawer__item[data-selected='true'] .styles-drawer__item-toggle {
+    background: #e5e5e5;
+  }
+
+  @media screen and (max-width: 749px) {
+    .styles-drawer__dialog {
+      width: 100vw;
+      inset: 0;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Styles drawer",
+  "tag": null,
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Shown only on products with a `custom.other_styles` metafield. Each entry is a related style's full product title. See SETUP-styles-drawer.md for setup."
+    },
+    {
+      "type": "checkbox",
+      "id": "enabled",
+      "label": "Show styles drawer",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "button_label",
+      "label": "Trigger title",
+      "default": "Choose a style"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_count",
+      "label": "Show available count next to title",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "drawer_heading",
+      "label": "Drawer heading",
+      "default": "Choose a style"
+    },
+    {
+      "type": "header",
+      "content": "t:content.padding"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start",
+      "label": "t:settings.left",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end",
+      "label": "t:settings.right",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    }
+  ],
+  "presets": [
+    {
+      "name": "Styles drawer",
+      "category": "Product"
+    }
+  ]
+}
+{% endschema %}

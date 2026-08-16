@@ -1,0 +1,50 @@
+{%- doc -%}
+  Resolves the trade pricing multiplier for the current customer and product.
+  Outputs the multiplier as a plain number (e.g. `0.9` or `1`).
+
+  Returns 1 (no discount) unless:
+    - Trade pricing is enabled in theme settings, AND
+    - Customer is logged in and has the `trade` tag (case-insensitive), AND
+    - The product is not tagged with the exclusion tag (e.g. `Last Chance`), AND
+    - The product is not the digital gift card (title `E-Gift Card`
+      or `gift-card` product template).
+
+  When the product is tagged with the furniture tag (e.g. `furniture-20`),
+  the furniture-specific discount percent is used; otherwise the default percent is used.
+
+  Designed to be called via `capture`, because `{% render %}` has isolated scope:
+
+  @param {product} product - The product to evaluate against (required)
+
+  @example
+  {%- capture trade_multiplier_raw -%}
+    {%- render 'trade-price-multiplier', product: product -%}
+  {%- endcapture -%}
+  {%- assign price_multiplier = trade_multiplier_raw | strip | times: 1.0 -%}
+  {{ product.price | times: price_multiplier | money }}
+{%- enddoc -%}
+
+{%- liquid
+  assign price_multiplier = 1
+
+  assign is_gift_card = false
+  if product.title == 'E-Gift Card' or product.template_suffix == 'gift-card'
+    assign is_gift_card = true
+  endif
+
+  if settings.trade_discount_enabled and customer and is_gift_card == false
+    assign customer_tags_lc = customer.tags | join: ',' | downcase
+    if customer_tags_lc contains 'trade'
+      unless product.tags contains settings.trade_exclusion_tag
+        if product.tags contains settings.trade_furniture_tag
+          assign discount_percent = settings.trade_discount_furniture_percent
+        else
+          assign discount_percent = settings.trade_discount_default_percent
+        endif
+        assign price_multiplier = 100 | minus: discount_percent | times: 1.0 | divided_by: 100
+      endunless
+    endif
+  endif
+
+  echo price_multiplier
+-%}

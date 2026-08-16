@@ -1,0 +1,26 @@
+{%- doc -%}
+  A single upsell card. Used for both the left and right halves of a
+  double upsell, and reused by the single upsell.
+
+  @param {object} [upsell_image] - image metafield object
+  @param {string} [upsell_caption] - caption text
+  @param {string} [upsell_link] - destination URL (card becomes a link when present)
+{%- enddoc -%}
+
+{%- capture upsell_item -%}
+  {%- if upsell_image != blank -%}
+    <div class="art-UpsellItem_Media">
+      {%- render 'article-upsell-image', image: upsell_image, class: 'art-UpsellItem_Img', alt: upsell_caption -%}
+    </div>
+  {%- endif -%}
+
+  {%- if upsell_caption != blank -%}
+    <span class="art-UpsellItem_Caption">{{ upsell_caption }}</span>
+  {%- endif -%}
+{%- endcapture -%}
+
+{%- if upsell_link != blank -%}
+  <a class="art-UpsellItem" href="{{ upsell_link }}">{{ upsell_item }}</a>
+{%- else -%}
+  <div class="art-UpsellItem">{{ upsell_item }}</div>
+{%- endif -%}

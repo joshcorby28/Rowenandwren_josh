@@ -1,0 +1,28 @@
+/**
+ * Global-E shim styles
+ *
+ * Supports assets/global-e-shim.js, which intercepts the Global-E
+ * "This product cannot be shipped to your country" banner on product pages
+ * and replaces it with a "Please contact us to purchase" CTA button.
+ *
+ * - .not-available-new            -> hides the original Global-E banner
+ * - .contact-to-purchase          -> the injected CTA button
+ * - .contact-to-purchase--with-swatches -> spacing when placed before the
+ *                                    "Request fabric swatches" button
+ */
+
+/* Hide the original Global-E "cannot be shipped" banner.
+   Critical: without this the banner shows alongside the CTA button. */
+.not-available-new {
+  display: none !important;
+}
+
+/* Injected CTA button */
+.contact-to-purchase {
+  width: 100%;
+}
+
+/* Extra spacing when the button sits directly above the swatch button */
+.contact-to-purchase--with-swatches {
+  margin-bottom: 15px;
+}

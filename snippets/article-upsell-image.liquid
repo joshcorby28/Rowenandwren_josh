@@ -1,0 +1,49 @@
+{%- doc -%}
+  Renders an upsell image from a metafield, handling every shape the value
+  might take:
+    - a Shopify image / media object (image_reference, file_reference)
+    - a plain URL string (url / single_line_text metafield)
+    - an Accentuate Custom Fields image object, whose value stringifies to a
+      hash blob like:
+        {"filename"=>"5.jpg", ... "src"=>"https://cdn.accentuate.io/.../5.jpg?v=..."}
+      In that case we extract the `src` URL from the blob.
+
+  This avoids both "invalid url input" errors (image_url handed a non-image)
+  and the raw blob being dumped into the `src` attribute.
+
+  @param {object|string} image - the image metafield value
+  @param {string} [class] - additional class(es) for the <img>
+  @param {string} [alt] - alt text (used for the URL / blob fallbacks)
+
+  @example
+  {% render 'article-upsell-image', image: upsell_image, class: 'art-UpsellItem_Img', alt: upsell_caption %}
+{%- enddoc -%}
+
+{%- liquid
+  # Resolve media objects (which expose a preview_image) down to the image.
+  assign resolved_image = image
+  if resolved_image.preview_image != blank
+    assign resolved_image = resolved_image.preview_image
+  endif
+
+  # Stringify the value so we can inspect / parse it regardless of type.
+  assign image_string = image | append: ''
+
+  # Pull the src URL out of an Accentuate hash blob, if present.
+  # Splitting on '"src"=>"' does not match '"original_src"=>"' or
+  # '"cloudinary_src"=>"' because those are preceded by '_', not '"'.
+  assign extracted_src = ''
+  if image_string contains '"src"=>"'
+    assign extracted_src = image_string | split: '"src"=>"' | last | split: '"' | first
+  elsif image_string contains '"src":"'
+    assign extracted_src = image_string | split: '"src":"' | last | split: '"' | first
+  endif
+-%}
+
+{%- if resolved_image.width != blank -%}
+  {%- render 'image', image: resolved_image, class: class -%}
+{%- elsif extracted_src != blank -%}
+  <img src="{{ extracted_src }}" alt="{{ alt | escape }}" class="{{ class }}" loading="lazy">
+{%- elsif image_string contains '://' -%}
+  <img src="{{ image_string }}" alt="{{ alt | escape }}" class="{{ class }}" loading="lazy">
+{%- endif -%}

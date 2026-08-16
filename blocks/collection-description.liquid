@@ -1,0 +1,280 @@
+{% liquid
+  assign block_settings = block.settings
+  assign collection = closest.collection
+  assign full_description = collection.description
+
+  # Plain text is used both to build the truncated teaser and to decide whether a toggle is needed.
+  assign plain_description = full_description | strip_html | strip_newlines | strip
+  assign words = plain_description | split: ' '
+  assign word_count = words.size
+
+  assign mobile_limit = block_settings.word_limit_mobile
+  assign desktop_limit = block_settings.word_limit_desktop
+
+  capture mobile_teaser
+    for word in words limit: mobile_limit
+      echo word
+      unless forloop.last
+        echo ' '
+      endunless
+    endfor
+    if word_count > mobile_limit
+      echo '...'
+    endif
+  endcapture
+
+  capture desktop_teaser
+    for word in words limit: desktop_limit
+      echo word
+      unless forloop.last
+        echo ' '
+      endunless
+    endfor
+    if word_count > desktop_limit
+      echo '...'
+    endif
+  endcapture
+
+  assign truncate_mobile = false
+  if word_count > mobile_limit
+    assign truncate_mobile = true
+  endif
+
+  assign truncate_desktop = false
+  if word_count > desktop_limit
+    assign truncate_desktop = true
+  endif
+
+  assign read_more_label = block_settings.read_more_label | default: 'Read more'
+  assign read_less_label = block_settings.read_less_label | default: 'Read less'
+%}
+
+{%- if full_description != blank -%}
+  <collection-description
+    class="collection-description spacing-style"
+    data-read-more="{{ read_more_label | escape }}"
+    data-read-less="{{ read_less_label | escape }}"
+    style="{% render 'spacing-style', settings: block_settings %} --collection-description-max-width: {{ block_settings.max_width }}px;"
+    {{ block.shopify_attributes }}
+  >
+    <div
+      class="collection-description__content"
+      ref="content"
+      data-expanded="false"
+      data-truncate-mobile="{{ truncate_mobile }}"
+      data-truncate-desktop="{{ truncate_desktop }}"
+      data-teaser-mobile="{{ mobile_teaser | strip_newlines | strip | escape }}"
+      data-teaser-desktop="{{ desktop_teaser | strip_newlines | strip | escape }}"
+    >
+      <rte-formatter
+        id="collection-description-full-{{ block.id }}"
+        class="collection-description__full rte"
+        ref="full"
+      >
+        {{ full_description }}
+      </rte-formatter>
+
+      {%- if truncate_mobile or truncate_desktop -%}
+        <button
+          type="button"
+          class="collection-description__toggle"
+          ref="toggle"
+          aria-expanded="false"
+          aria-controls="collection-description-full-{{ block.id }}"
+          on:click="/toggle"
+          data-show-mobile="{{ truncate_mobile }}"
+          data-show-desktop="{{ truncate_desktop }}"
+        >
+          {{ read_more_label }}
+        </button>
+      {%- endif -%}
+    </div>
+  </collection-description>
+{%- endif -%}
+
+{% stylesheet %}
+  .collection-description {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .collection-description__content {
+    max-inline-size: min(100%, var(--collection-description-max-width, 700px));
+    margin-inline: auto;
+    text-align: center;
+  }
+
+  .collection-description__full {
+    margin: 0;
+  }
+
+  /*
+   * Collapsed state: on each breakpoint, only truncate when the description is actually
+   * over that breakpoint's word limit. Where it isn't, the full rich text stays visible
+   * (keeping links, bold, etc.); where it is, a plain-text teaser is drawn with ::before
+   * so no text is duplicated in the DOM.
+   */
+  @media screen and (max-width: 749px) {
+    .collection-description__content[data-expanded='false'][data-truncate-mobile='true']::before {
+      content: attr(data-teaser-mobile);
+      display: inline;
+    }
+
+    .collection-description__content[data-expanded='false'][data-truncate-mobile='true'] .collection-description__full {
+      display: none;
+    }
+  }
+
+  @media screen and (min-width: 750px) {
+    .collection-description__content[data-expanded='false'][data-truncate-desktop='true']::before {
+      content: attr(data-teaser-desktop);
+      display: inline;
+    }
+
+    .collection-description__content[data-expanded='false'][data-truncate-desktop='true'] .collection-description__full {
+      display: none;
+    }
+  }
+
+  /* Toggle styled as an inline link, matching the theme's link colour. */
+  .collection-description__toggle {
+    display: inline;
+    margin-inline-start: 0.25em;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: var(--color-primary, currentColor);
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+    cursor: pointer;
+  }
+
+  .collection-description__toggle:hover {
+    text-decoration: none;
+  }
+
+  /* Show the toggle only on breakpoints where the description is actually truncated. */
+  @media screen and (max-width: 749px) {
+    .collection-description__toggle[data-show-mobile='false'] {
+      display: none;
+    }
+  }
+
+  @media screen and (min-width: 750px) {
+    .collection-description__toggle[data-show-desktop='false'] {
+      display: none;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Collection description",
+  "tag": null,
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Shows the current collection's description with a 'read more' toggle when it exceeds the word limit."
+    },
+    {
+      "type": "header",
+      "content": "Read more"
+    },
+    {
+      "type": "range",
+      "id": "word_limit_mobile",
+      "label": "Mobile word limit",
+      "min": 5,
+      "max": 100,
+      "step": 1,
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "word_limit_desktop",
+      "label": "Desktop word limit",
+      "min": 5,
+      "max": 100,
+      "step": 1,
+      "default": 36
+    },
+    {
+      "type": "text",
+      "id": "read_more_label",
+      "label": "'Read more' label",
+      "default": "Read more"
+    },
+    {
+      "type": "text",
+      "id": "read_less_label",
+      "label": "'Read less' label",
+      "default": "Read less"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "range",
+      "id": "max_width",
+      "label": "Max width",
+      "min": 300,
+      "max": 1200,
+      "step": 10,
+      "unit": "px",
+      "default": 700
+    },
+    {
+      "type": "header",
+      "content": "Padding"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "Top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "Bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start",
+      "label": "Left",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end",
+      "label": "Right",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    }
+  ],
+  "presets": [
+    {
+      "name": "Collection description"
+    }
+  ]
+}
+{% endschema %}

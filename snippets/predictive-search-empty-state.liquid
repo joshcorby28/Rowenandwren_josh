@@ -1,0 +1,78 @@
+{% doc %}
+  Renders the predictive search empty state (before a query is typed).
+
+  Shows two lists in the search dropdown's left column:
+    - Popular searches: from the linklist chosen in Theme settings → Search
+      (settings.popular_searches_menu).
+    - Recent searches: the shopper's own recent terms, populated client-side
+      from localStorage by assets/predictive-search.js (data-recent-searches).
+
+  @param {number} shadow_opacity - shadow opacity for the empty state container shadow
+  @param {string} [products_test_id] - a playwright test id (kept for parity with the results section)
+  @param {boolean} [load_empty_state] - Load the empty state or not
+
+  @example
+  {% render 'predictive-search-empty-state', shadow_opacity: 0, products_test_id: 'empty-state' %}
+{% enddoc %}
+
+<div
+  id="predictive-search-results"
+  class="predictive-search-dropdown"
+  role="listbox"
+  aria-expanded="true"
+  style="--color-shadow: rgb(var(--color-foreground-rgb) / {{ shadow_opacity }});"
+>
+  {% if load_empty_state %}
+    {%- assign popular_menu = linklists[settings.popular_searches_menu] -%}
+    <div class="predictive-search-results__inner">
+      <div class="predictive-search-results__grid predictive-search-results__grid--no-left">
+        <div class="predictive-search-results__col predictive-search-results__col--left predictive-search-results__col--empty">
+          {%- if popular_menu != blank and popular_menu.links.size > 0 -%}
+            <div class="predictive-search-results__group">
+              <h4 class="predictive-search-results__title">
+                {{ 'content.popular_searches' | t }}
+              </h4>
+              <ul class="predictive-search-results__meta-list predictive-search-results__wrapper list-unstyled">
+                {%- for link in popular_menu.links -%}
+                  <li class="predictive-search-results__meta-item">
+                    <a
+                      class="predictive-search-results__meta-link"
+                      href="{{ link.url }}"
+                    >
+                      {{ link.title }}
+                    </a>
+                  </li>
+                {%- endfor -%}
+              </ul>
+            </div>
+          {%- endif -%}
+
+          {%- comment -%}
+            Recent searches are populated client-side (localStorage). The
+            container starts hidden and is revealed by the JS when terms exist.
+          {%- endcomment -%}
+          <div
+            class="predictive-search-results__group predictive-search-results__recent"
+            data-recent-searches
+            hidden
+          >
+            <h4 class="predictive-search-results__title">
+              {{ 'content.recent_searches' | t }}
+              <button
+                class="predictive-search-results__clear button button-unstyled"
+                type="button"
+                on:click="/clearRecentSearches"
+              >
+                {{ 'actions.clear' | t }}
+              </button>
+            </h4>
+            <ul
+              class="predictive-search-results__meta-list predictive-search-results__wrapper list-unstyled"
+              data-recent-searches-list
+            ></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+</div>

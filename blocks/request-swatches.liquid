@@ -1,0 +1,604 @@
+{%- liquid
+  assign product = closest.product
+  if request.visual_preview_mode and product == blank
+    assign product = collections.all.products.first
+  endif
+
+  assign show_button = false
+  if product.tags contains 'show_swatch_button'
+    assign show_button = true
+  endif
+-%}
+
+{%- if show_button -%}
+  {%- assign swatches_collection = collections['order-free-fabric-swatches'] -%}
+  {%- assign global_settings = shop.metaobjects.fabric_groups['fabric-groups-main'] -%}
+  {%- assign component_id = 'RequestSwatches-' | append: section.id | append: '-' | append: block.id -%}
+
+  <swatch-samples-component
+    id="{{ component_id }}"
+    class="request-swatches"
+    data-section-id="{{ section.id }}"
+    {{ block.shopify_attributes }}
+  >
+    <button
+      type="button"
+      class="request-swatches__button button prd-SwatchSamples btn-Button btn-Button-grey"
+      on:click="/showDialog"
+    >
+      <span class="request-swatches__button-icon svg-wrapper">
+        {% render 'icon-swatches' %}
+      </span>
+      <span class="request-swatches__button-label">
+        {{ block.settings.button_label | default: 'Request fabric swatches' }}
+      </span>
+    </button>
+
+    <dialog
+      ref="dialog"
+      class="request-swatches__dialog dialog-drawer"
+      aria-labelledby="{{ component_id }}-title"
+    >
+      <header class="request-swatches__header">
+        <h3 id="{{ component_id }}-title" class="request-swatches__title">
+          {{ block.settings.drawer_heading | default: 'Request six fabric swatches' }}
+        </h3>
+        <button
+          type="button"
+          class="request-swatches__close button button-unstyled"
+          on:click="/closeDialog"
+          aria-label="{{ 'accessibility.close' | t | default: 'Close' }}"
+        >
+          <span class="svg-wrapper">
+            <svg width="16px" height="17px" viewBox="0 0 16 17" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+              <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" stroke-linecap="square">
+                <g id="Group" transform="translate(1.182860, 1.682690)" stroke="#717171">
+                  <line x1="13.63428" y1="0.00034" x2="0" y2="13.63462" id="Path"></line>
+                  <line x1="3e-05" y1="0" x2="13.63428" y2="13.63432" id="Path"></line>
+                </g>
+              </g>
+            </svg>
+          </span>
+        </button>
+      </header>
+
+        <div class="request-swatches__content">
+          {%- if block.settings.drawer_intro != blank -%}
+            <p class="request-swatches__intro">{{ block.settings.drawer_intro }}</p>
+          {%- else -%}
+            <p class="request-swatches__intro">
+              Should you be planning a new sofa, armchair, or footstool, you can
+              choose up to six of our hand-cut fabric swatches for free and we&rsquo;ll
+              send them on their way to you with free postage too.
+            </p>
+          {%- endif -%}
+
+          {%- comment -%}
+            Groups come from the `groups_list` field on the live metaobject;
+            fall back to `groups` for older data shapes.
+
+            The swatch product title CANNOT be reliably reconstructed from
+            `fabric.key`: the material word in the key (e.g. "Linen") is not the
+            product's catalogue material, which may be "Belgian Linen" or
+            "Rustic Linen". The authoritative mapping is `fabric.keys` — a list
+            that includes the swatch product's exact title — so match on that
+            first, and only fall back to a derived "{last word}, {first word}"
+            title if `keys` yields nothing.
+          {%- endcomment -%}
+          {%- assign groups_data = global_settings.groups_list.value -%}
+          {%- if groups_data == blank -%}
+            {%- assign groups_data = global_settings.groups.value -%}
+          {%- endif -%}
+          {%- for group in groups_data -%}
+            {%- assign group_count = 0 -%}
+            {%- assign group_title = group.title.value | strip -%}
+            {%- assign group_description = group.description | metafield_tag -%}
+            {%- capture group_content -%}
+              {%- for fabric in global_settings.fabrics.value -%}
+                {%- assign fabric_group_val = fabric.group.value | strip -%}
+                {%- if fabric_group_val == group_title -%}
+                  {%- assign found_item = blank -%}
+                  {%- if fabric.keys.value != blank -%}
+                    {%- for key in fabric.keys.value -%}
+                      {%- assign candidate = swatches_collection.products | where: 'title', key | first -%}
+                      {%- if candidate != blank -%}
+                        {%- assign found_item = candidate -%}
+                        {%- break -%}
+                      {%- endif -%}
+                    {%- endfor -%}
+                  {%- endif -%}
+
+                  {%- if found_item == blank -%}
+                    {%- assign modified_title = fabric.key.value | split: ' ' -%}
+                    {%- assign modified_title_last = modified_title | last -%}
+                    {%- assign modified_title_first = modified_title | first -%}
+                    {%- assign composed_title = modified_title_last | append: ', ' | append: modified_title_first -%}
+                    {%- assign found_item = swatches_collection.products | where: 'title', composed_title | first -%}
+                  {%- endif -%}
+
+                  {%- if found_item == blank -%}
+                    {%- continue -%}
+                  {%- endif -%}
+
+                  {%- assign group_count = group_count | plus: 1 -%}
+                  {%- assign sample_image = blank -%}
+                  {%- if fabric.swatch.value != blank -%}
+                    {%- assign sample_image = fabric.swatch.value -%}
+                  {%- elsif found_item.featured_image != blank -%}
+                    {%- assign sample_image = found_item.featured_image -%}
+                  {%- endif -%}
+                  {%- assign sample_variant = found_item.selected_or_first_available_variant -%}
+
+                  <button
+                    type="button"
+                    class="request-swatches__sample"
+                    ref="samples[]"
+                    data-variant-id="{{ sample_variant.id }}"
+                    data-name="{{ fabric.name.value | escape }}"
+                    {% if sample_image != blank %}data-image="{{ sample_image | image_url: width: 160 }}"{% endif %}
+                    data-selected="false"
+                    aria-pressed="false"
+                    on:click="/toggleSample"
+                  >
+                    <span class="request-swatches__sample-image">
+                      {%- if sample_image != blank -%}
+                        {{
+                          sample_image
+                          | image_url: width: 240
+                          | image_tag:
+                              widths: '120, 240',
+                              sizes: '120px',
+                              loading: 'lazy',
+                              alt: fabric.name.value
+                        }}
+                      {%- else -%}
+                        {{ 'product-1' | placeholder_svg_tag: 'request-swatches__sample-placeholder-svg' }}
+                      {%- endif -%}
+                    </span>
+                    <span class="request-swatches__sample-text">
+                      <span class="request-swatches__sample-name">{{ fabric.name.value }}</span>
+                      {%- if fabric.byline.value != blank -%}
+                        <span class="request-swatches__sample-byline">{{ fabric.byline.value }}</span>
+                      {%- endif -%}
+                      {%- if fabric.rub_count.value != blank -%}
+                        <span class="request-swatches__sample-rub">Rub Count: {{ fabric.rub_count.value }}</span>
+                      {%- endif -%}
+                    </span>
+                    <span class="request-swatches__sample-toggle" aria-hidden="true">
+                      <span class="request-swatches__sample-toggle-add svg-wrapper">
+                        {{- 'icon-plus.svg' | inline_asset_content -}}
+                      </span>
+                      <span class="request-swatches__sample-toggle-remove svg-wrapper">
+                        {{- 'icon-checkmark.svg' | inline_asset_content -}}
+                      </span>
+                    </span>
+                  </button>
+                {%- endif -%}
+              {%- endfor -%}
+            {%- endcapture -%}
+
+            {%- if group_count > 0 -%}
+              <div class="request-swatches__group">
+                <div class="request-swatches__group-title">{{ group_title }}</div>
+                {%- if group_description != blank -%}
+                  <div class="request-swatches__group-description">{{ group_description }}</div>
+                {%- endif -%}
+                <div class="request-swatches__group-samples">{{ group_content }}</div>
+              </div>
+            {%- endif -%}
+          {%- endfor -%}
+        </div>
+
+        <footer class="request-swatches__footer">
+          <div class="request-swatches__selected" aria-label="Selected swatches">
+          {%- for i in (1..6) -%}
+            <div
+            class="request-swatches__slot"
+            ref="slots[]"
+            data-index="{{ i }}"
+            data-filled="false"
+            >
+              <span class="request-swatches__slot-placeholder" data-slot-placeholder>{{ i }}</span>
+            </div>
+          {%- endfor -%}
+          </div>
+
+          <button
+            type="button"
+            class="request-swatches__add button button-primary"
+            ref="addButton"
+            on:click="/handleAddToCart"
+            disabled
+          >
+            {{ block.settings.add_button_label | default: 'Add to Basket' }}
+          </button>
+
+          <p
+            ref="errorMessage"
+            class="request-swatches__error"
+            role="status"
+            aria-live="polite"
+          ></p>
+        </footer>
+    </dialog>
+  </swatch-samples-component>
+
+  <script type="module" src="{{ 'swatch-samples-component.js' | asset_url }}"></script>
+{%- endif -%}
+
+{% stylesheet %}
+  .request-swatches {
+    display: block;
+    width: 100%;
+  }
+
+  .request-swatches__button {
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 12px 24px;
+    color: var(--color-foreground, currentColor);
+    cursor: pointer;
+    border-radius: var(--button-radius, 0);
+  }
+
+  .request-swatches__button:hover {
+    background: var(--color-background-secondary, rgba(0, 0, 0, 0.04));
+  }
+
+  .request-swatches__button-icon {
+    display: inline-flex;
+    width: 17px;
+    height: 17px;
+  }
+
+  .request-swatches__button-icon svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .request-swatches__dialog {
+    --animation-speed: 0.3s;
+    margin: 0 0 0 auto;
+    padding: 0;
+    width: min(610px, 100vw);
+    height: 100dvh;
+    max-height: 100dvh;
+    max-width: 100vw;
+    border: none;
+    background: var(--color-background, #fff);
+    color: var(--color-foreground, #111);
+    inset: 0 0 0 auto;
+  }
+
+  .request-swatches__dialog[open] {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .request-swatches__dialog::backdrop {
+    background: rgba(0, 0, 0, 0.4);
+  }
+
+  .request-swatches__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px;
+    border-block-end: 1px solid var(--color-border, rgba(0, 0, 0, 0.1));
+  }
+
+  .request-swatches__title {
+    margin: 0;
+    font-size: 1.5rem;
+  }
+
+  @media screen and (max-width: 749px) {
+    .request-swatches__title {
+      font-size: 1.2rem;
+    }
+  }
+
+  .request-swatches__close {
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    color: inherit;
+  }
+
+  .request-swatches__close .svg-wrapper {
+    display: inline-flex;
+    width: 20px;
+    height: 20px;
+  }
+
+  .request-swatches__content {
+    overflow-y: auto;
+    flex: 1 1 auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .request-swatches__intro {
+    margin: 0 0 20px;
+    font-size: .8125rem;
+    font-weight: 300;
+    letter-spacing: .0375rem;
+    line-height: 1.3125rem;
+    padding-bottom: 40px;
+    padding-top: 60px;
+    border-bottom: 1px solid #E6E6E6;
+    margin: 0 60px;
+  }
+
+  @media screen and (max-width: 749px) {
+    .request-swatches__intro {
+      margin: 0 20px;
+      padding-top: 40px;
+    }
+  }
+
+  .request-swatches__group {
+    margin: 0 60px;
+    padding: 60px 0;
+    border-bottom: 1px solid #E6E6E6;
+  }
+
+  @media screen and (max-width: 749px) {
+    .request-swatches__group {
+      margin: 0 20px;
+      padding: 40px 0;
+    }
+  }
+
+  .request-swatches__group:last-child {
+    border: 0;
+  }
+
+  .request-swatches__group-title {
+    margin-block-end: 4px;
+    text-transform: uppercase;
+    font-size: 13px;
+    font-weight: 400;
+  }
+
+  .request-swatches__group-description {
+    margin-block-end: 40px;
+    color: var(--color-foreground-secondary, inherit);
+    line-height: 1.3125rem;
+  }
+
+  .request-swatches__group-samples {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 30px;
+  }
+
+  .request-swatches__sample {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 0;
+    text-align: start;
+    background: transparent;
+    cursor: pointer;
+    color: inherit;
+    font: inherit;
+    border: 0;
+  }
+
+  .request-swatches__sample:hover .request-swatches__sample-toggle {
+    opacity: 1;
+    visibility: visible
+  }
+
+  .request-swatches__sample[data-selected='true'] .request-swatches__sample-toggle {
+    opacity: 1;
+    visibility: visible;
+    background-color: #e5e5e5;
+  }
+
+  .request-swatches__sample[data-selected='true'] {
+
+  }
+
+  .request-swatches__sample-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--color-background-secondary, #f4f4f4);
+  }
+
+  .request-swatches__sample-image img,
+  .request-swatches__sample-image svg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .request-swatches__sample-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.875rem;
+  }
+
+  .request-swatches__sample-name {
+    text-transform: uppercase;
+    font-weight: 400;
+    font-size: 11px;
+    letter-spacing: .94px;
+  }
+
+  .request-swatches__sample-byline,
+  .request-swatches__sample-rub {
+    font-size: 0.75rem;
+    color: var(--color-foreground-secondary, inherit);
+  }
+
+  .request-swatches__sample-toggle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background-color: #fff;
+    border: 1px solid var(--color-border, currentColor);
+    transform: translate(50%, -50%);
+    box-shadow: 0 4px 6px #00000029;
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .request-swatches__sample-toggle .svg-wrapper {
+    width: 14px;
+    height: 14px;
+    display: inline-flex;
+  }
+
+  .request-swatches__sample[data-selected='true'] .request-swatches__sample-toggle-add,
+  .request-swatches__sample[data-selected='false'] .request-swatches__sample-toggle-remove {
+    display: none;
+  }
+
+  .request-swatches__footer {
+    border-block-start: 1px solid var(--color-border, rgba(0, 0, 0, 0.1));
+    padding: 20px;
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    background: var(--color-background, #fff);
+    justify-content: space-between;
+  }
+
+  @media screen and (max-width: 749px) {
+    .request-swatches__footer {
+      flex-direction: column;
+    }
+  }
+
+  .request-swatches__selected {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+  }
+
+  @media screen and (max-width: 749px) {
+    .request-swatches__selected {
+      width: fit-content;
+      align-self: center;
+    }
+  }
+
+  .request-swatches__slot {
+    position: relative;
+    aspect-ratio: 1;
+    overflow: hidden;
+    font-size: 0.875rem;
+    color: var(--color-foreground-secondary, inherit);
+    width: 40px;
+    height: 40px;
+    border: 1px solid #0000001A;
+  }
+
+  .request-swatches__slot-placeholder {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .request-swatches__slot[data-filled='true'] {
+    border-style: solid;
+  }
+
+  .request-swatches__slot-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .request-swatches__add {
+    width: fit-content;
+  }
+
+  @media screen and (max-width: 749px) {
+    .request-swatches__add {
+      width: 100%;
+    }
+  }
+
+  .request-swatches__add[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .request-swatches__error {
+    margin: 0;
+    min-height: 1em;
+    font-size: 0.875rem;
+    color: var(--color-error, #b00020);
+  }
+
+  @media (max-width: 749px) {
+    .request-swatches__dialog {
+      width: 100vw;
+      inset: 0;
+    }
+
+    .request-swatches__group-samples {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Request fabric swatches",
+  "tag": null,
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Shown only on products tagged with `show_swatch_button`. Pulls data from the `fabric_groups` metaobject entry with handle `fabric-groups-main` and the collection with handle `order-free-fabric-swatches`. See README for setup."
+    },
+    {
+      "type": "text",
+      "id": "button_label",
+      "label": "Button label",
+      "default": "Request fabric swatches"
+    },
+    {
+      "type": "text",
+      "id": "drawer_heading",
+      "label": "Drawer heading",
+      "default": "Request six fabric swatches"
+    },
+    {
+      "type": "textarea",
+      "id": "drawer_intro",
+      "label": "Drawer intro copy"
+    },
+    {
+      "type": "text",
+      "id": "add_button_label",
+      "label": "Add to basket button label",
+      "default": "Add to Basket"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Request fabric swatches",
+      "category": "Product"
+    }
+  ]
+}
+{% endschema %}

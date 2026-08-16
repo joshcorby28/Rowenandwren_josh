@@ -1,0 +1,16 @@
+{%- doc -%}
+  A full-width image with an optional caption.
+
+  @param {object} [upsell_image] - image metafield object
+  @param {string} [upsell_caption] - caption text
+{%- enddoc -%}
+
+{%- if upsell_image != blank -%}
+  <figure class="art-FullWidthImage">
+    {%- render 'article-upsell-image', image: upsell_image, class: 'art-FullWidthImage_Img', alt: upsell_caption -%}
+
+    {%- if upsell_caption != blank -%}
+      <figcaption class="art-FullWidthImage_Caption">{{ upsell_caption }}</figcaption>
+    {%- endif -%}
+  </figure>
+{%- endif -%}

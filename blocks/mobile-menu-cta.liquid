@@ -1,0 +1,141 @@
+{%- doc -%}
+  Self-rendering theme block for the menu Lookbook card.
+
+  Used by BOTH the mobile drawer and the desktop hamburger dropdown. In
+  Horizon, dynamic theme block settings (image, submenu_title, etc.)
+  cannot be read from `section.blocks` — that just returns generic
+  `@theme` wrappers. They can only be read by rendering the block. So
+  this block self-renders TWO copies of its content into the captured
+  `content_for 'blocks'` pool:
+
+    - Mobile drawer card, wrapped in
+      `<!--mm-card:<own-handle>-->…<!--mm-card-end-->`. Consumed by
+      `snippets/drawers-navigation-child.liquid`.
+
+    - Desktop dropdown card, wrapped in
+      `<!--dd-card:<own-handle>-->…<!--dd-card-end-->`. Consumed by
+      `snippets/header-dropdown.liquid`.
+
+  Both consumers string-split the captured pool on their own markers, so
+  the two payloads never bleed into each other. The pool itself is never
+  output verbatim — only the sliced contents are.
+{%- enddoc -%}
+
+{%- assign mm_handle = block.settings.submenu_title | handleize -%}
+<!--mm-card:{{ mm_handle }}-->
+<div class="drw-Nav_Card util-FauxLink" {{ block.shopify_attributes }}>
+  {%- if block.settings.image -%}
+    {%- render 'responsive-image',
+      image: block.settings.image,
+      width: 710,
+      height: 350,
+      wrapper_class: 'drw-Nav_CardImage'
+    -%}
+  {%- endif -%}
+
+  <div class="drw-Nav_CardInner">
+    <p class="drw-Nav_CardTitle fz-22_28">
+      {{ block.settings.title }}
+    </p>
+
+    {%- if block.settings.link != blank and block.settings.link_text != blank -%}
+      <a
+        class="drw-Nav_CardLink link"
+        href="{{ block.settings.link }}"
+      >
+        {{ block.settings.link_text }}
+      </a>
+    {%- endif -%}
+  </div>
+
+  {%- if block.settings.link != blank -%}
+    <a
+      href="{{ block.settings.link }}"
+      class="util-FauxLink_Link"
+      title="{{ block.settings.link_text | escape }}"
+    ></a>
+  {%- endif -%}
+</div>
+<!--mm-card-end-->
+
+<!--dd-card:{{ mm_handle }}-->
+<div class="hd-Dropdown_Cta util-FauxLink">
+  <div class="hd-Dropdown_CtaImageContainer">
+    <div class="hd-Dropdown_CtaImage">
+      {%- if block.settings.image -%}
+        {%- render 'responsive-image',
+          image: block.settings.image,
+          width: 860,
+          height: 550
+        -%}
+      {%- endif -%}
+    </div>
+
+    <div class="hd-Dropdown_CtaOverlay">
+      {%- if block.settings.title != blank -%}
+        <p class="hd-Dropdown_CtaTitle">
+          {{ block.settings.title }}
+        </p>
+      {%- endif -%}
+
+      {%- if block.settings.link_text != blank and block.settings.link != blank -%}
+        <a
+          class="hd-Dropdown_CtaLink link"
+          href="{{ block.settings.link }}"
+        >
+          {{ block.settings.link_text }}
+        </a>
+
+        <a
+          class="hd-Dropdown_CtaFauxLink util-FauxLink_Link"
+          href="{{ block.settings.link }}"
+          title="{{ block.settings.link_text | escape }}"
+          tabindex="-1"
+          aria-hidden="true"
+        ></a>
+      {%- endif -%}
+    </div>
+  </div>
+</div>
+<!--dd-card-end-->
+
+{% schema %}
+{
+  "name": "Lookbook card",
+  "tag": null,
+  "settings": [
+    {
+      "type": "text",
+      "id": "submenu_title",
+      "label": "Submenu title",
+      "info": "Must match a tier-1 submenu, e.g. Garden"
+    },
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Image"
+    },
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Title"
+    },
+    {
+      "type": "text",
+      "id": "link_text",
+      "label": "Link text"
+    },
+    {
+      "type": "url",
+      "id": "link",
+      "label": "Link"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Menu edit",
+      "category": "Mobile menu"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: none;
+        stroke: #636362;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+    </style>
+  </defs>
+  <g id="Clothes-Footwear-Accessories_Clothes-Design_clothes-design-thread" data-name="Clothes-Footwear-Accessories / Clothes-Design / clothes-design-thread">
+    <g id="Group_121" data-name="Group 121">
+      <g id="Light_121" data-name="Light 121">
+        <path id="Rectangle-path_19" data-name="Rectangle-path 19" class="cls-1" d="m2.5,3.5h13v17H2.5V3.5Z"/>
+        <path id="Shape_643" data-name="Shape 643" class="cls-1" d="m15.5,17.5H2.5"/>
+        <path id="Shape_644" data-name="Shape 644" class="cls-1" d="m15.5,14H2.5"/>
+        <path id="Shape_645" data-name="Shape 645" class="cls-1" d="m15.5,10.5H2.5"/>
+        <path id="Shape_646" data-name="Shape 646" class="cls-1" d="m15.5,7H2.5"/>
+        <path id="Shape_647" data-name="Shape 647" class="cls-1" d="m.5,2c0,.83.67,1.5,1.5,1.5h14c.83,0,1.5-.67,1.5-1.5s-.67-1.5-1.5-1.5H2c-.83,0-1.5.67-1.5,1.5h0Z"/>
+        <path id="Shape_648" data-name="Shape 648" class="cls-1" d="m.5,22c0,.83.67,1.5,1.5,1.5h14c.83,0,1.5-.67,1.5-1.5s-.67-1.5-1.5-1.5H2c-.83,0-1.5.67-1.5,1.5h0Z"/>
+        <path id="Shape_649" data-name="Shape 649" class="cls-1" d="m15.5,17.5h4c1.1,0,2-.9,2-2v-6c0-1.1.9-2,2-2h0"/>
+      </g>
+    </g>
+  </g>
+</svg>

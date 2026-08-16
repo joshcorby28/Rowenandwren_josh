@@ -1,0 +1,48 @@
+{%- doc -%}
+  Renders CSS variables for spacing (padding and margin) styles with responsive scaling.
+  Intended for blocks and sections that provide values for all the referenced settings.
+
+  @param {object} settings - The block or section settings object containing spacing values
+
+  @example
+  <div class="spacing-style" style="{% render 'spacing-style', settings: section.settings %}">
+{%- enddoc -%}
+{%- liquid
+  assign scale_min = 20
+  assign keys = 'padding-block-start,padding-block-end,padding-inline-start,padding-inline-end' | split: ','
+
+  comment
+    When the merchant opts into custom mobile padding, also emit the mobile
+    block padding variables. These override the desktop values below the mobile
+    breakpoint (see `.spacing-style` / `.inherit-spacing` in base.css). When the
+    checkbox is off, no mobile variables are emitted and mobile inherits the
+    desktop values, preserving the previous behaviour.
+  endcomment
+  if settings.enable_mobile_padding
+    assign mobile_keys = 'padding-block-start-mobile,padding-block-end-mobile' | split: ','
+    assign keys = keys | concat: mobile_keys
+  endif
+
+  for key in keys
+    assign value = settings[key]
+
+    if value != blank
+      echo '--'
+      echo key
+      echo ': '
+
+      if value > scale_min
+        echo 'max('
+        echo scale_min
+        echo 'px, calc(var(--spacing-scale) * '
+        echo value
+        echo 'px))'
+      else
+        echo value
+        echo 'px'
+      endif
+
+      echo ';'
+    endif
+  endfor
+-%}

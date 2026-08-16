@@ -1,0 +1,302 @@
+{% comment %}
+  Page Navigation block
+
+  A horizontal menu (from a link list) that can be added anywhere via the theme
+  editor. It scrolls horizontally when it overflows on small screens and applies
+  an underline to the link matching the current page.
+
+  Ported from the legacy theme's `sections/page-navigation.liquid`, rebuilt as a
+  theme block using the current theme's conventions (color schemes, spacing
+  snippet, {% stylesheet %} / {% schema %}).
+{% endcomment %}
+
+{% liquid
+  assign block_settings = block.settings
+  assign menu = block_settings.menu
+  assign color_scheme = block_settings.color_scheme
+%}
+
+{% if menu != blank and menu.links.size > 0 %}
+  <nav
+    class="
+      page-navigation
+      spacing-style
+      page-navigation--{{ block_settings.alignment }}
+      {% if block_settings.show_active_underline %} page-navigation--underline{% endif %}
+      {% if block_settings.active_first_on_mobile %} page-navigation--active-first{% endif %}
+      {% if block_settings.full_bleed_on_mobile %} page-navigation--bleed{% endif %}
+      {% if block_settings.show_divider %} page-navigation--divider{% endif %}
+      {% if block_settings.inherit_color_scheme == false %} color-{{ color_scheme }}{% endif %}
+    "
+    aria-label="{{ menu.title | default: 'Page navigation' | escape }}"
+    style="
+      --page-navigation-gap: {{ block_settings.item_gap }}px;
+      {% render 'spacing-style', settings: block_settings %}
+    "
+    {{ block.shopify_attributes }}
+  >
+    <ul class="page-navigation__items list-unstyled {{ block_settings.link_preset }}">
+      {% for link in menu.links %}
+        <li class="page-navigation__item{% if link.active %} page-navigation__item--active{% endif %}">
+          <a
+            class="page-navigation__link"
+            href="{{ link.url }}"
+            title="{{ link.title | escape }}"
+            {% if link.active %}aria-current="page"{% endif %}
+          >
+            {{ link.title }}
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  </nav>
+{% endif %}
+
+{% stylesheet %}
+  .page-navigation {
+    display: flex;
+    /* Fill the section so the section's own alignment can't offset/clip the
+       menu (e.g. a section set to "Center" would otherwise push it inwards). */
+    width: 100%;
+    /* Allow horizontal scrolling when the menu overflows (mobile). */
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    /* Hide scrollbar while keeping scroll behaviour. */
+    scrollbar-width: none;
+  }
+
+  .page-navigation::-webkit-scrollbar {
+    display: none;
+  }
+
+  /*
+    Alignment is done with auto margins on the list rather than
+    justify-content. On a horizontal scroll container justify-content: center
+    clips the overflow on both ends and locks the start out of reach; auto
+    margins center the menu only while it fits, then collapse to 0 on overflow
+    so it left-aligns and stays scrollable from the first item.
+  */
+  .page-navigation--start .page-navigation__items {
+    margin-inline-end: auto;
+  }
+
+  .page-navigation--center .page-navigation__items {
+    margin-inline: auto;
+  }
+
+  .page-navigation--end .page-navigation__items {
+    margin-inline-start: auto;
+  }
+
+  .page-navigation--divider {
+    border-block-end: var(--style-border-width, 1px) solid rgba(var(--color-border-rgb) / 0.3);
+  }
+
+  .page-navigation__items {
+    display: flex;
+    flex-flow: row nowrap;
+    gap: var(--page-navigation-gap, 20px);
+    white-space: nowrap;
+    /* Prevent flex items from shrinking so long menus scroll instead of wrapping. */
+    min-width: max-content;
+  }
+
+  .page-navigation__item {
+    flex: 0 0 auto;
+  }
+
+  .page-navigation__link {
+    position: relative;
+    display: inline-block;
+    color: inherit;
+    text-decoration: none;
+    font-family: "gill-sans-nova";
+    font-size: .6875rem;
+    font-weight: 400;
+    letter-spacing: .0625rem;
+    line-height: .8125rem;
+    text-transform: uppercase;
+  }
+
+  /* Active-page underline. */
+  .page-navigation--underline .page-navigation__link::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    inset-block-end: -3px;
+    display: block;
+    border-block-end: var(--style-border-width, 1px) solid transparent;
+  }
+
+  .page-navigation--underline .page-navigation__link[aria-current="page"]::after {
+    border-block-end-color: currentColor;
+  }
+
+  @media screen and (max-width: 749px) {
+    /*
+      Break out of the section's page gutter so the menu spans the full screen
+      width and scrolls all the way to the browser edge, while the first item
+      stays aligned with the page content. Higher specificity (two classes) so
+      this padding wins over the shared .spacing-style padding.
+    */
+    .page-navigation.page-navigation--bleed {
+      margin-inline: calc(var(--page-margin, 20px) * -1);
+      padding-inline: var(--page-margin, 20px);
+    }
+
+    /* On mobile, surface the active item first so it is visible without scrolling. */
+    .page-navigation--active-first .page-navigation__item--active {
+      order: -1;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Page navigation",
+  "tag": null,
+  "settings": [
+    {
+      "type": "link_list",
+      "id": "menu",
+      "label": "Menu",
+      "default": "main-menu"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "alignment",
+      "label": "Alignment",
+      "info": "Applies when the menu is narrower than the available width. On overflow it always scrolls from the start.",
+      "options": [
+        { "value": "start", "label": "Left" },
+        { "value": "center", "label": "Center" },
+        { "value": "end", "label": "Right" }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "range",
+      "id": "item_gap",
+      "label": "Space between items",
+      "min": 0,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "checkbox",
+      "id": "active_first_on_mobile",
+      "label": "Show active item first on mobile",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "full_bleed_on_mobile",
+      "label": "Extend to screen edges on mobile",
+      "info": "Lets the menu span the full width and scroll to the browser edge instead of stopping at the section's side padding.",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_divider",
+      "label": "Show bottom border",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Typography"
+    },
+    {
+      "type": "select",
+      "id": "link_preset",
+      "label": "Link text style",
+      "options": [
+        { "value": "", "label": "Default" },
+        { "value": "paragraph", "label": "Paragraph" },
+        { "value": "h6", "label": "Heading 6" },
+        { "value": "h5", "label": "Heading 5" },
+        { "value": "h4", "label": "Heading 4" }
+      ],
+      "default": "paragraph"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_active_underline",
+      "label": "Underline active page link",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Colors"
+    },
+    {
+      "type": "checkbox",
+      "id": "inherit_color_scheme",
+      "label": "Inherit color scheme from section",
+      "default": true
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-1",
+      "visible_if": "{{ block.settings.inherit_color_scheme == false }}"
+    },
+    {
+      "type": "header",
+      "content": "Padding"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "Top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "Bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start",
+      "label": "Left",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end",
+      "label": "Right",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 20
+    }
+  ],
+  "presets": [
+    {
+      "name": "Page navigation",
+      "category": "Links"
+    }
+  ]
+}
+{% endschema %}

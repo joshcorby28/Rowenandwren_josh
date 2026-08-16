@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="23px" height="24px" viewBox="0 0 23 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Recycled Materials</title>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" stroke-linecap="round" stroke-linejoin="round">
+        <g id="Recycled-Materials" transform="translate(1.000000, 1.000000)" stroke="#717171">
+            <line x1="11.85" y1="18.8974592" x2="15.07" y2="22.1074592" id="Path"></line>
+            <line x1="15.07" y1="15.6774592" x2="11.85" y2="18.8974592" id="Path"></line>
+            <polyline id="Path" points="5.57 13.5974592 4.4 9.1974592 0 10.3774592"></polyline>
+            <polyline id="Path" points="11.71 6.5174592 16.1 7.6974592 17.28 3.2974592"></polyline>
+            <path d="M11.85,18.8974592 L19.65,18.8974592 C20.2538693,18.8946313 20.8109133,18.5716682 21.1133959,18.0490111 C21.4158785,17.5263541 21.4183924,16.8824622 21.12,16.3574592 L17.92,10.8174592" id="Path"></path>
+            <path d="M4.4,9.1974592 L0.28,16.3474592 C-0.0234761636,16.8730941 -0.0236901873,17.5206534 0.279438457,18.0464888 C0.582567101,18.5723242 1.14304926,18.8966586 1.75,18.8974592 L8.35,18.8974592" id="Path"></path>
+            <path d="M16.11,7.6874592 L12.16,0.8474592 C11.8584836,0.323185999 11.299793,4.4408921e-16 10.695,4.4408921e-16 C10.090207,4.4408921e-16 9.53151642,0.323185999 9.23,0.8474592 L6.05,6.3474592" id="Path"></path>
+        </g>
+    </g>
+</svg>

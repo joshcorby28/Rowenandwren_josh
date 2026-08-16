@@ -1,0 +1,201 @@
+{%- doc -%}
+  Renders the predictive search products list for empty state and recently viewed products
+
+  @param {string} title - title of the result list
+  @param {object[]} products - array of products
+  @param {string[]} [order_ids] - array of product ids
+  @param {number} [limit] - limit of products to display
+  @param {boolean} [hide_title] - suppress the list heading (used when the parent renders its own header, e.g. the two-column results column head)
+  @param {string} [products_test_id] - a playwright test id, used to differentiate empty state from 'real' search results
+{%- enddoc -%}
+{%- liquid
+  assign recently_viewed_title_text = 'content.recently_viewed_products' | t
+  assign limit = limit | default: 8
+  # Hide-from-search flag: a product is hidden from on-site search results if it
+  # carries the `custom.hide_from_search` boolean metafield OR the `hide_search_tag`
+  # tag. The product stays fully published/indexable — this only affects theme
+  # rendering. See also sections/search-results.liquid.
+  assign hide_search_tag = 'hide_search_tag'
+-%}
+<div
+  id="predictive-search-products"
+  class="predictive-search-results__products"
+  {% if products_test_id %}
+    data-testid="{{ products_test_id }}"
+  {% endif %}
+>
+  {% if title == recently_viewed_title_text %}
+    <div
+      class="recently-viewed-wrapper"
+      ref="recentlyViewedWrapper"
+    >
+      <h4
+        class="predictive-search-results__title"
+        ref="recentlyViewedTitle[]"
+      >
+        {{ title }}
+        <button
+          class="predictive-search-results__clear button button-unstyled"
+          type="button"
+          on:click="/clearRecentlyViewedProducts"
+        >
+          {{ 'actions.clear' | t }}
+        </button>
+      </h4>
+      <ul
+        class="predictive-search-results__list predictive-search-results__wrapper-products list-unstyled"
+        role="listbox"
+        aria-label="{{ title }}"
+      >
+        {% comment %}
+          If we're searching for recently viewed products by id, we need to reorder the products.
+          The order here comes from the search terms, and we display the products in the order of the ids.
+        {% endcomment %}
+        {% assign shown = 0 %}
+        {% if order_ids != blank %}
+          {% for _id in order_ids %}
+            {% assign int_id = _id | times: 1 %}
+            {% assign product = products | find: 'id', int_id %}
+            {% if product == blank %}{% continue %}{% endif %}
+            {% if product.metafields.custom.hide_from_search.value or product.tags contains hide_search_tag %}{% continue %}{% endif %}
+            <li
+              class="predictive-search-results__card predictive-search-results__card--product"
+              ref="recentlyViewedItems[]"
+            >
+              {% render 'resource-card',
+                resource_type: 'product',
+                resource: product,
+                image_width: 500,
+                image_hover: true,
+                image_aspect_ratio: '4 / 5'
+              %}
+            </li>
+            {% assign shown = shown | plus: 1 %}
+            {% if shown >= limit %}{% break %}{% endif %}
+          {% endfor %}
+        {% else %}
+          {% for product in products %}
+            {% if product.metafields.custom.hide_from_search.value or product.tags contains hide_search_tag %}{% continue %}{% endif %}
+            <li
+              class="predictive-search-results__card predictive-search-results__card--product"
+              ref="recentlyViewedItems[]"
+            >
+              {% render 'resource-card',
+                resource_type: 'product',
+                resource: product,
+                image_width: 500,
+                image_hover: true,
+                image_aspect_ratio: '4 / 5'
+              %}
+            </li>
+            {% assign shown = shown | plus: 1 %}
+            {% if shown >= limit %}{% break %}{% endif %}
+          {% endfor %}
+        {% endif %}
+      </ul>
+    </div>
+  {% else %}
+    {% unless hide_title %}
+      <h4 class="predictive-search-results__title">
+        {{ title }}
+      </h4>
+    {% endunless %}
+    <ul
+      class="predictive-search-results__list predictive-search-results__wrapper-products list-unstyled"
+      role="listbox"
+      aria-label="{{ title | default: 'content.search_results_resource_products' | t }}"
+    >
+      {% assign shown = 0 %}
+      {% for product in products %}
+        {% if product.metafields.custom.hide_from_search.value or product.tags contains hide_search_tag %}{% continue %}{% endif %}
+        <li
+          class="predictive-search-results__card predictive-search-results__card--product"
+          ref="resultsItems[]"
+        >
+          {% render 'resource-card',
+            resource_type: 'product',
+            resource: product,
+            image_width: 500,
+            image_hover: true,
+            image_aspect_ratio: '4 / 5'
+          %}
+        </li>
+        {% assign shown = shown | plus: 1 %}
+        {% if shown >= limit %}{% break %}{% endif %}
+      {% endfor %}
+    </ul>
+  {% endif %}
+</div>
+
+{% stylesheet %}
+  .predictive-search-results__products {
+    padding-inline: var(--padding-xl);
+  }
+
+  .recently-viewed-wrapper {
+    display: grid;
+    grid-template-rows: auto auto;
+    max-height: 1000px;
+    opacity: 1;
+    overflow: visible;
+    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: top center;
+    transform: translateY(0);
+  }
+
+  .recently-viewed-wrapper.removing {
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+      transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+  }
+
+  .predictive-search-results__clear.button-unstyled {
+    color: var(--color-foreground);
+    opacity: 0.68;
+    transition: opacity var(--animation-speed-medium) var(--animation-easing);
+    padding: 0;
+    margin-left: var(--margin-sm);
+    display: none;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  .recently-viewed-wrapper.removing .predictive-search-results__card {
+    transition: none;
+    transform: none;
+    opacity: 1;
+  }
+
+  .recently-viewed-wrapper > * {
+    transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .predictive-search-results__wrapper-products .predictive-search-results__card:nth-child(1) {
+    animation-delay: 30ms;
+  }
+
+  .predictive-search-results__wrapper-products .predictive-search-results__card:nth-child(2) {
+    animation-delay: 60ms;
+  }
+
+  .predictive-search-results__wrapper-products .predictive-search-results__card:nth-child(3) {
+    animation-delay: 90ms;
+  }
+
+  .predictive-search-results__wrapper-products .predictive-search-results__card:nth-child(4) {
+    animation-delay: 120ms;
+  }
+
+  .predictive-search-results__wrapper-products .predictive-search-results__card:nth-child(n + 5) {
+    animation-delay: 150ms;
+  }
+
+  .predictive-search-results__wrapper-products {
+    animation-delay: 50ms;
+  }
+{% endstylesheet %}

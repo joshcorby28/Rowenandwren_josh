@@ -1,0 +1,120 @@
+{%- doc -%}
+  Renders the desktop dropdown panel triggered by the header hamburger.
+
+  CTA columns are extracted from `mobile_menu_extras` — the captured
+  output of `content_for 'blocks'` produced upstream in
+  sections/header.liquid. Each `mobile-menu-cta` block self-renders both
+  its mobile drawer card AND its desktop dropdown card into that pool,
+  wrapping the desktop card in
+  `<!--dd-card:<handle>-->…<!--dd-card-end-->`. We string-split the pool
+  per primary-link handle (matching the merchant's "Submenu title"
+  setting) to assign each card to the right column. The pool itself is
+  never output verbatim — only the sliced contents are.
+
+  Reading `block.settings` from `section.blocks` is not viable in Horizon
+  because dynamic theme blocks come back as generic `@theme` wrappers
+  with no exposed settings. Self-render-and-slice is the only mechanism
+  that gives us access to the merchant's `submenu_title`, image, title
+  and link values.
+{%- enddoc -%}
+
+<div
+  class="hd-Dropdown hd-Dropdown-nav"
+  id="header-dropdown-nav"
+  data-el="header.dropdown"
+  data-dropdown-id="nav"
+>
+  <section class="hd-Dropdown_Inner lyt-Container">
+    <nav class="hd-Dropdown_Columns" data-el="header.dropdownColumns">
+      {%-
+        render 'header-dropdown-column',
+        links: primary_linklist.links,
+        level: 1,
+        handle: primary_linklist.handle,
+      -%}
+
+      {%- liquid
+        comment
+          Build a CTA column per primary-link handle that has children
+          AND at least one dd-card whose handle matches. Cap at 2 cards.
+        endcomment
+        assign card_end_marker = '<!--dd-card-end-->'
+      -%}
+
+      {%- for link in primary_linklist.links -%}
+        {%- if link.links.size > 0 -%}
+          {%- assign sub_handle = link.handle -%}
+          {%- assign open_marker = '<!--dd-card:' | append: sub_handle | append: '-->' -%}
+          {%- assign parts = mobile_menu_extras | split: open_marker -%}
+
+          {%- if parts.size > 1 -%}
+            {%- capture cards_html -%}
+              {%- assign rendered = 0 -%}
+              {%- for part in parts offset: 1 -%}
+                {%- if rendered < 2 -%}
+                  {%- assign card = part | split: card_end_marker | first -%}
+                  {{- card -}}
+                  {%- assign rendered = rendered | plus: 1 -%}
+                {%- endif -%}
+              {%- endfor -%}
+            {%- endcapture -%}
+
+            {%- if cards_html != blank -%}
+              <div
+                class="hd-Dropdown_Ctas"
+                data-el="header.ctaColumn"
+                data-related-list="{{ primary_linklist.handle }},{{ sub_handle }}"
+              >
+                {{ cards_html }}
+              </div>
+            {%- endif -%}
+          {%- endif -%}
+        {%- endif -%}
+      {%- endfor -%}
+
+      {%- comment -%}
+        Default group: cards whose Submenu title is left blank show on
+        initial open (no submenu hovered). The marker is `<!--dd-card:-->`.
+      {%- endcomment -%}
+      {%- assign default_parts = mobile_menu_extras | split: '<!--dd-card:-->' -%}
+      {%- if default_parts.size > 1 -%}
+        {%- capture default_cards_html -%}
+          {%- assign rendered = 0 -%}
+          {%- for part in default_parts offset: 1 -%}
+            {%- if rendered < 2 -%}
+              {%- assign card = part | split: card_end_marker | first -%}
+              {{- card -}}
+              {%- assign rendered = rendered | plus: 1 -%}
+            {%- endif -%}
+          {%- endfor -%}
+        {%- endcapture -%}
+
+        {%- if default_cards_html != blank -%}
+          <div
+            class="hd-Dropdown_Ctas hd-Dropdown_Ctas-active"
+            data-el="header.ctaColumn"
+            data-related-list="{{ primary_linklist.handle }}"
+          >
+            {{ default_cards_html }}
+          </div>
+        {%- endif -%}
+      {%- endif -%}
+    </nav>
+
+    <footer class="hd-Dropdown_Footer">
+      {%- for link in footer_linklist.links -%}
+        {%- comment -%}
+          The wishlist URL override is set via the link's URL field in the Shopify
+          admin linklist rather than being hardcoded here. If the iwish app path
+          ever changes, update it in the navigation admin — not in this file.
+        {%- endcomment -%}
+        <a
+          class="hd-Dropdown_FooterLink"
+          href="{{ link.url }}"
+        >
+          {{ link.title }}
+        </a>
+      {%- endfor -%}
+    </footer>
+  </section>
+</div>

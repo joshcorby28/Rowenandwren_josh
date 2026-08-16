@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32px" height="24px" viewBox="0 0 32 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Dishwasher Friendly</title>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Dishwasher-Friendly" transform="translate(1.000000, 1.000000)" stroke="#717171">
+            <path d="M10.78,13.98 C9.5799283,13.9690026 8.61444446,12.9901092 8.61997614,11.79 C8.61997614,10.88 9.84,8.87 10.36,8.05 L10.78,7.38 L11.2,8.05 C11.86,9.05 12.95,10.92 12.95,11.79 C12.9500501,12.991736 11.9816859,13.9690252 10.78,13.98 L10.78,13.98 Z" id="Path" stroke-linejoin="round"></path>
+            <ellipse id="Oval" cx="10.74" cy="10.91" rx="10.74" ry="10.91"></ellipse>
+            <ellipse id="Oval" cx="10.75" cy="10.91" rx="7.48" ry="7.59"></ellipse>
+            <line x1="24.73" y1="21.99" x2="21.75" y2="21.99" id="Path" stroke-linecap="round"></line>
+            <line x1="24.68" y1="21.99" x2="27.65" y2="21.99" id="Path" stroke-linecap="round"></line>
+            <line x1="24.68" y1="13.32" x2="24.68" y2="21.99" id="Path"></line>
+            <path d="M23.12,13.1 C23.6286389,13.2388403 24.152802,13.3127607 24.68,13.32 C28.61,13.26 30.01,9.92 30.01,6.98 L29.07,0.61 C29.0407549,0.422051739 28.880192,0.282615492 28.69,0.28 L20.43,0.28 C20.250746,0.282475162 20.0990539,0.413098906 20.07,0.59 L19.84,1.82" id="Path" stroke-linecap="round" stroke-linejoin="round"></path>
+        </g>
+    </g>
+</svg>

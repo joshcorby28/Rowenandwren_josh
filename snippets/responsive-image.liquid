@@ -1,0 +1,122 @@
+{%- comment -%}
+  Renders a responsive image with correct aspect ratio and lazy loading.
+
+  Uses:
+  - CSS `aspect-ratio` (96 %+ browser support) instead of the padding-top hack,
+    eliminating per-image injected <style> tags and the responsive_image_counter.
+  - Native `loading="lazy"` instead of the lazysizes JS library, removing the
+    dependency on data-src / data-widths / data-aspectratio / data-sizes="auto"
+    and the blank GIF placeholder.
+
+  Accepts:
+  - image: {Object} Image object (required)
+  - width: {Number} Max width of the image container
+  - height: {Number} Max height of the image container
+  - img_class: {String} Extra class(es) on the <img>
+  - wrapper_class: {String} Extra class(es) on the wrapper <div>
+  - no_lazy: {Boolean} Pass true to disable lazy loading (use for above-the-fold images)
+  - size_by_width: {Boolean} Derive height from image aspect ratio instead of using the height param
+  - use_original_format: {Boolean} Fit image within width/height using its native aspect ratio
+  - crop: {String} Crop parameter passed to img_url (e.g. 'center')
+  - provide_css: {Boolean} Emit max-width constraints on the wrapper (rarely needed; prefer CSS)
+
+  Usage:
+  {% render 'responsive-image', image: featured_image, width: 860, height: 550 %}
+{%- endcomment -%}
+
+{%- unless crop -%}
+  {%- assign crop = nil -%}
+{%- endunless -%}
+
+{%- unless no_lazy -%}
+  {%- assign no_lazy = false -%}
+{%- endunless -%}
+
+{%- comment -%} Resolve display dimensions ————————————————————————————————— {%- endcomment -%}
+{%- if size_by_width -%}
+  {%- assign width_image = width -%}
+  {%- assign height_image = width_image | divided_by: image.aspect_ratio -%}
+{%- elsif use_original_format -%}
+  {%- if image.aspect_ratio <= 1 -%}
+    {%- assign height_image = height -%}
+    {%- assign width_image = height_image | times: image.aspect_ratio -%}
+  {%- else -%}
+    {%- assign width_image = width -%}
+    {%- assign height_image = width_image | divided_by: image.aspect_ratio -%}
+  {%- endif -%}
+{%- else -%}
+  {%- assign width_image = width -%}
+  {%- assign height_image = height | times: 1.00 -%}
+{%- endif -%}
+
+{%- comment -%}
+  Optional max-width constraint on the wrapper. Only emitted when provide_css is
+  true to avoid injecting a <style> block for every image on the page.
+{%- endcomment -%}
+{%- if provide_css -%}
+  <style>
+    #ImageWrapper-{{ image.id }}-{{ width }} {
+      max-width: {{ width_image }}px;
+    }
+    #Image-{{ image.id }}-{{ width }} {
+      max-width: {{ width_image }}px;
+      {%- unless size_by_width -%}
+      max-height: {{ height_image }}px;
+      {%- endunless -%}
+    }
+  </style>
+{%- endif -%}
+
+{%- comment -%} Build srcset from valid Shopify CDN widths ———————————————— {%- endcomment -%}
+{%- assign image_widths = '180,360,540,720,900,1080,1296,1512,1728,1944,2160,2376,2592,2808,3024' | split: ',' -%}
+{%- capture srcset -%}
+  {%- for w in image_widths -%}
+    {%- assign w_num = w | plus: 0 | round -%}
+    {%- if image.width >= w_num -%}
+      {%- assign w_param = w_num | append: 'x' -%}
+      {{ image | img_url: w_param, crop: crop }} {{ w_num }}w,
+    {%- endif -%}
+  {%- endfor -%}
+  {%- assign w_param = image.width | append: 'x' -%}
+  {{ image | img_url: w_param, crop: crop }} {{ image.width }}w
+{%- endcapture -%}
+{%- assign srcset = srcset | strip -%}
+
+{%- comment -%}
+  Use CSS aspect-ratio on the wrapper to reserve space before the image loads,
+  preventing layout shift. This replaces the padding-top ::before trick which
+  required a unique ID and injected <style> per image.
+{%- endcomment -%}
+{%- assign aspect_ratio = height_image | divided_by: width_image -%}
+
+<div
+  class="rsp-Image {{ wrapper_class }}"
+  id="ImageWrapper-{{ image.id }}-{{ width }}"
+  data-image-id="{{ image.id }}"
+  style="aspect-ratio: {{ width_image }} / {{ height_image }};"
+>
+  {%- assign fallback_src = width_image | append: 'x' | prepend: '' -%}
+
+  <img
+    class="rsp-Image_Image {{ img_class }}"
+    id="Image-{{ image.id }}-{{ width }}"
+    src="{{ image | img_url: fallback_src, crop: crop }}"
+    srcset="{{ srcset }}"
+    sizes="auto"
+    width="{{ width_image | round }}"
+    height="{{ height_image | round }}"
+    alt="{{ image.alt | escape }}"
+    {%- unless no_lazy %}
+    loading="lazy"
+    decoding="async"
+    {%- endunless %}
+  >
+</div>
+
+<noscript>
+  <img
+    class="{{ img_class }}"
+    src="{{ image | img_url: '2048x2048', crop: crop }}"
+    alt="{{ image.alt | escape }}"
+  >
+</noscript>

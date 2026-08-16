@@ -1,0 +1,114 @@
+{%- assign has_colours = false -%}
+{%- assign current_colour = product.metafields.colours.current -%}
+{%-
+  if current_colour
+and product.metafields.colours.colour_item.size > 0
+-%}
+  {%- assign has_colours = true -%}
+{%- endif -%}
+
+{%- assign total_rendered_colours = 1 -%}
+
+{%- if has_colours -%}
+  {%- assign current_colour_handle = current_colour | handleize -%}
+
+  {%- capture colour_list -%}
+    <ul class="prd-Colours_Items">
+      {%- liquid
+        assign current_colour_downcase = current_colour | strip | downcase
+
+        for colour in shop.metafields.colours.title
+          assign colour_downcase = colour | strip | downcase
+          if colour_downcase == current_colour_downcase
+            assign image = shop.metafields.colours.image[forloop.index0]
+            assign hex = shop.metafields.colours.hex[forloop.index0]
+            break
+          endif
+        endfor
+
+        assign apply_current_styling = true
+        if template.name == 'collection'
+          assign apply_current_styling = false
+        endif
+      -%}
+
+      <li class="prd-Colours_Item">
+        {%-
+          render 'product-colours-item',
+          image: image.first.cloudinary_src,
+          hex: hex,
+          product: product,
+          current: apply_current_styling
+        -%}
+      </li>
+
+      {%- for colour_item in product.metafields.colours.colour_item -%}
+        {%- liquid
+          if colour_item == ''
+            continue
+          endif
+
+          assign colour_product_handle = product.handle | replace: current_colour_handle, colour_item | handleize
+          assign colour_product = all_products[colour_product_handle]
+          assign colour_item_downcase = colour_item | strip | downcase
+        -%}
+
+        {%- if colour_product != blank -%}
+          {%- liquid
+            for colour in shop.metafields.colours.title
+              assign colour_downcase = colour | strip | downcase
+
+              if colour_downcase == colour_item_downcase
+                assign image = shop.metafields.colours.image[forloop.index0]
+                assign hex = shop.metafields.colours.hex[forloop.index0]
+                break
+              endif
+            endfor
+          -%}
+
+          <li class="prd-Colours_Item">
+            {%-
+              render 'product-colours-item',
+              image: image.first.cloudinary_src,
+              hex: hex,
+              product: colour_product,
+              collection: collection,
+              current: false
+            -%}
+          </li>
+
+          {%- assign total_rendered_colours = total_rendered_colours | plus: 1 -%}
+          {%- if total_rendered_colours >= limit -%}
+            {%- assign remaining_colours = product.metafields.colours.colour_item.size | minus: total_rendered_colours -%}
+            {%- if remaining_colours > 0 -%}
+              <li class="prd-Colours_Item">
+                <span class="prd-Colours_More">
+                  {{ 'products.product.remaining_colours' | t: count: remaining_colours }}
+                </span>
+              </li>
+            {%- endif -%}
+
+            {%- break -%}
+          {%- endif -%}
+        {%- endif -%}
+      {%- endfor -%}
+    </ul>
+  {%- endcapture -%}
+
+  {%- if list_only -%}
+    {{ colour_list }}
+  {%- else -%}
+     <div class="prd-DetailOffers_Option">
+        {%- assign current_colour_override = product.metafields.custom.colour_override -%}
+      <p class="prd-DetailOffers_OptionLabel">
+        {% if current_colour_override != blank %}
+          Colour: {{ current_colour_override }}
+        {% else %}
+          {{ 'products.details.current_colour' | t: colour: current_colour }}
+        {% endif %}
+      </p>
+
+      {{ colour_list }}
+    </div>
+  {%- endif -%}
+{%- endif -%}

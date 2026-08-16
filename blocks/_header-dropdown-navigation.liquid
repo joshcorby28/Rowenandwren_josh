@@ -1,0 +1,43 @@
+{%- if localization.country.iso_code == 'US' and settings.usa_navigation_linklist != blank -%}
+  {%- assign active_nav_linklist = settings.usa_navigation_linklist -%}
+{%- else -%}
+  {%- assign active_nav_linklist = section.settings.navigation_linklist -%}
+{%- endif -%}
+
+<button
+  class="hd-Banner_Icon hd-Banner_Icon-menu"
+  data-el="header.dropdownToggle"
+  data-dropdown-id="nav"
+  aria-expanded="false"
+  aria-controls="header-dropdown-nav"
+>
+  <span class="hd-Banner_Icon-menuIcon" aria-hidden="true">
+    <svg viewBox="0 0 16 13" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <rect width="16" height="1" rx="0.5"/>
+      <rect y="12" width="16" height="1" rx="0.5"/>
+      <rect y="6" width="16" height="1" rx="0.5"/>
+    </svg>
+  </span>
+
+  <span class="hd-Banner_Icon-closeIcon" aria-hidden="true">
+    <svg width="16px" height="17px" viewBox="0 0 16 17" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" stroke-linecap="square"><g transform="translate(1.182860, 1.682690)" stroke="#717171"><line x1="13.63428" y1="0.00034" x2="0" y2="13.63462"></line><line x1="3e-05" y1="0" x2="13.63428" y2="13.63432"></line></g></g></svg>
+  </span>
+
+  <span class="hidden">Menu</span>
+</button>
+
+{%-
+  render 'header-dropdown',
+  primary_linklist: active_nav_linklist,
+  footer_linklist: section.settings.footer_linklist,
+  mobile_menu_extras: mobile_menu_extras,
+-%}
+
+{% schema %}
+{
+  "name": "Dropdown navigation",
+  "tag": null,
+  "blocks": [],
+  "settings": []
+}
+{% endschema %}

@@ -1,0 +1,352 @@
+{%- doc -%}
+  Renders the header search dropdown panel.
+
+  This is the search equivalent of snippets/header-dropdown.liquid: a
+  full-width `.hd-Dropdown` panel that the shared header controller
+  (assets/header-header.js) slides down under the header when a
+  `data-el="header.dropdownToggle" data-dropdown-id="search"` toggle is
+  activated. Open/close, Escape-to-close, focus-on-open, clear-on-close
+  and mutual-exclusivity with the nav dropdown are all handled by that
+  controller — this snippet only provides the markup.
+
+  It is rendered ONCE, in sections/header.liquid, so there is a single
+  `#header-dropdown-search` panel regardless of how many search toggles
+  exist in the header.
+
+  Layout: a white input bar sits above a grey results body (matching the
+  design reference). Both bands use `.hd-Banner_Inner` so their content
+  lines up with the header content above.
+
+  @param {string} [class] - Additional classes for the predictive search component.
+{%- enddoc -%}
+
+<script
+  src="{{ 'predictive-search.js' | asset_url }}"
+  type="module"
+  fetchpriority="low"
+></script>
+
+<div
+  class="hd-Dropdown hd-Dropdown-search"
+  id="header-dropdown-search"
+  data-el="header.dropdown"
+  data-dropdown-id="search"
+  aria-expanded="false"
+>
+  <predictive-search-component
+    class="predictive-search color-{{ settings.popover_color_scheme }}{% if class != blank %} {{ class | strip }}{% endif %}"
+    style="--product-corner-radius: {{ settings.product_corner_radius | default: 8 | append: 'px' }}; --card-corner-radius: {{ settings.card_corner_radius | default: 8 | append: 'px' }};{% if settings.card_title_case == 'uppercase' %} --title-case: uppercase;{% endif %}"
+    data-section-id="predictive-search"
+    data-testid="search-component--panel"
+    role="search"
+    aria-label="{{ 'content.search_input_label' | t }}"
+  >
+    <form
+      action="{{ routes.search_url }}"
+      method="get"
+      role="search"
+      class="predictive-search-form"
+      ref="form"
+      on:keydown="/onSearchKeyDown"
+    >
+      <div class="search-panel__bar">
+        <div class="predictive-search-form__header">
+          <div class="predictive-search-form__header-inner">
+            <label
+              for="search-panel-input"
+              class="visually-hidden"
+            >
+              {{- 'content.search_input_label' | t -}}
+            </label>
+            <span class="svg-wrapper predictive-search__icon">
+              <svg viewBox="0 0 17 19" fill="none" xmlns="http://www.w3.org/2000/svg"><path clip-rule="evenodd" d="M13.74 7.37A6.37 6.37 0 111 7.369a6.37 6.37 0 0112.74 0z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path><path d="M11.593 13.097l4.754 4.754" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </span>
+            <input
+              class="search-input"
+              id="search-panel-input"
+              type="search"
+              name="q"
+              role="combobox"
+              aria-expanded="false"
+              aria-owns="predictive-search-results"
+              aria-controls="predictive-search-results"
+              aria-haspopup="listbox"
+              aria-autocomplete="list"
+              autocomplete="off"
+              placeholder="{{ 'content.search_input_placeholder' | t }}"
+              data-el="header.searchInput"
+              ref="searchInput"
+              on:input="/search"
+              on:keydown="/onSearchKeyDown"
+            >
+            <input
+              name="options[prefix]"
+              type="hidden"
+              value="last"
+            >
+            <button
+              type="button"
+              class="button-unstyled predictive-search__reset-button"
+              ref="resetButton"
+              hidden
+              on:click="/resetSearch"
+            >
+              {{ 'actions.clear' | t }}
+            </button>
+          </div>
+          <button
+            type="button"
+            class="button predictive-search__close-button"
+            data-el="header.dropdownToggle"
+            data-dropdown-id="search"
+            aria-controls="header-dropdown-search"
+            aria-label="{{ 'accessibility.close_dialog' | t }}"
+          >
+            <span class="svg-wrapper">
+              <svg width="16px" height="17px" viewBox="0 0 16 17" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" stroke-linecap="square"><g id="Group" transform="translate(1.182860, 1.682690)" stroke="#717171"><line x1="13.63428" y1="0.00034" x2="0" y2="13.63462" id="Path"></line><line x1="3e-05" y1="0" x2="13.63428" y2="13.63432" id="Path"></line></g></g></svg>
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <div class="search-panel__body">
+        <div
+          class="predictive-search-form__content"
+          tabindex="-1"
+          ref="predictiveSearchResults"
+          on:click="/handleModalClick"
+        >
+          {% render 'predictive-search-empty-state',
+            load_empty_state: true,
+            shadow_opacity: 0,
+            products_test_id: 'products-list-default--panel'
+          %}
+        </div>
+      </div>
+    </form>
+  </predictive-search-component>
+</div>
+
+{% stylesheet %}
+  /* ============================================================
+     SEARCH DROPDOWN PANEL
+     Reuses the shared `.hd-Dropdown` slide-down mechanics/animation
+     (see assets/base.css). This file adds the search-specific layout:
+     a white input bar above a grey results body.
+     ============================================================ */
+
+  .hd-Dropdown-search {
+    --search-panel-inline-padding: var(--page-margin, 20px);
+    /* Real rendered header (group) height, kept live by assets/header.js. */
+    --search-panel-offset: var(--header-group-height, var(--header-height, 60px));
+
+    /* Grey body; the input bar band paints itself white. */
+    background-color: #f0f0f0;
+
+    /* Span the full width of the page, independent of any parent padding. */
+    left: 0;
+    right: 0;
+    width: 100%;
+
+    /* Fill the viewport below the header. The panel drops to just under the
+       header (translateY), so its height must be the remaining viewport. */
+    height: calc(100dvh - var(--search-panel-offset));
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* The header row is a `.section` grid, so its `> *` rules
+     (`.section--page-width > *` / `.section--full-width-margin > *`) would drop
+     this panel into the inset centre column — that was the left/right gap.
+     Force the panel to span every grid column (incl. the page-margin columns)
+     and clear any section padding so it is truly full-bleed. The content is
+     inset instead via --search-panel-inline-padding. High specificity so it
+     beats the `.section--full-width.section--full-width-margin > *` rule. */
+  .header__row.section > .hd-Dropdown.hd-Dropdown-search {
+    grid-column: 1 / -1;
+    padding-inline: 0;
+  }
+
+  .hd-Dropdown-search predictive-search-component {
+    --resource-card-corner-radius: var(--product-corner-radius);
+
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+  }
+
+  .hd-Dropdown-search .predictive-search-form {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+  }
+
+  /* Bands ----------------------------------------------------- */
+  .search-panel__bar {
+    flex: 0 0 auto;
+    background-color: #fff;
+    border-block-end: 1px solid var(--color__border, var(--color-border));
+  }
+
+  .search-panel__body {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    background-color: #f0f0f0;
+  }
+
+  /* Input bar ------------------------------------------------- */
+  .hd-Dropdown-search .predictive-search-form__header {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding-block: 11px;
+    padding-inline: 60px 47px;
+  }
+
+  @media screen and (max-width: 749px) {
+    .hd-Dropdown-search .predictive-search-form__header {
+      padding-inline: 20px 10px;
+    }
+  }
+
+  .hd-Dropdown-search .predictive-search-form__header-inner {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .hd-Dropdown-search .predictive-search__icon {
+    position: absolute;
+    left: 0;
+    display: flex;
+    align-items: center;
+    width: 18px;
+    height: auto;
+    color: rgb(var(--color-foreground-rgb) / var(--opacity-60, 0.6));
+    pointer-events: none;
+  }
+
+  .hd-Dropdown-search .predictive-search__icon > svg {
+    width: 18px;
+    height: auto;
+  }
+
+  .hd-Dropdown-search input.search-input {
+    width: 100%;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--color-foreground);
+    font-size: .8125rem;
+    font-weight: 400;
+    letter-spacing: .01875rem;
+    line-height: 1.375rem;
+    padding-block: 4px;
+    padding-inline: calc(var(--icon-size-lg, 24px) + 16px) 0;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+
+  .hd-Dropdown-search .search-input::placeholder {
+    color: rgb(var(--color-foreground-rgb) / var(--opacity-subdued-text, 0.6));
+  }
+
+  .hd-Dropdown-search .search-input:is(:focus, :focus-visible) {
+    outline: none;
+    box-shadow: none;
+  }
+
+  /* Clear ("Clear") button ------------------------------------ */
+  .hd-Dropdown-search .predictive-search__reset-button {
+    cursor: pointer;
+    flex: 0 0 auto;
+    margin-inline-end: 16px;
+    padding: 0;
+    background: transparent;
+    color: var(--color-foreground);
+    opacity: 0.68;
+    transition: opacity var(--animation-speed-medium, 0.2s) var(--animation-easing, ease);
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  .hd-Dropdown-search .predictive-search__reset-button[hidden] {
+    display: none;
+  }
+
+  /* Close (X) button ------------------------------------------ */
+  .hd-Dropdown-search .predictive-search__close-button {
+    --button-color: var(--color-foreground);
+    --button-background-color: transparent;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: var(--minimum-touch-target, 44px);
+    height: var(--minimum-touch-target, 44px);
+    margin-inline-start: 8px;
+    padding: 0;
+    box-shadow: none;
+
+    .svg-wrapper,
+    svg {
+      width: 20px;
+      height: auto;
+    }
+
+    &:hover {
+      --button-color: var(--color-foreground);
+      --button-background-color: transparent;
+    }
+
+    &:active {
+      transform: scale(0.85);
+    }
+  }
+
+  /* Results region -------------------------------------------- */
+  /* The body is the scroll container. Its height is set explicitly by
+     assets/predictive-search.js (predictable regardless of the flex chain);
+     flex:1 is only a fallback before that runs. Only this region scrolls. */
+  .search-panel__body {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+
+    /* Firefox */
+    scrollbar-width: thin;
+  }
+
+  /* The results wrapper just flows inside the scrolling body. */
+  .hd-Dropdown-search .predictive-search-form__content {
+    display: block;
+    min-height: 100%;
+  }
+
+  /* The grey inner should fill the scroll area even when content is short. */
+  .hd-Dropdown-search .predictive-search-dropdown {
+    min-height: 100%;
+  }
+
+  /* Grey results background spans the full width; the page-margin padding
+     insets the content within it. */
+  .hd-Dropdown-search .predictive-search-results__inner {
+    background-color: #f0f0f0;
+    padding-inline: var(--search-panel-inline-padding);
+    padding-block: 28px 32px;
+
+    @media screen and (max-width: 749px) {
+      padding-block: 20px 24px;
+    }
+  }
+{% endstylesheet %}

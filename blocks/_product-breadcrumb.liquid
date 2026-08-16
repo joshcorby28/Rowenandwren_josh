@@ -1,0 +1,62 @@
+{% style %}
+  .collection-breadcrumb__items {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    gap: 0;
+    text-decoration: underline;
+  }
+
+  .collection-breadcrumb__item + .collection-breadcrumb__item:before {
+    content: "\00a0/";
+  }
+{% endstyle %}
+
+<nav class="collection-breadcrumb">
+  <ul class="collection-breadcrumb__items" itemscope="" itemtype="http://schema.org/BreadcrumbList">
+    <li class="collection-breadcrumb__item" itemprop="itemListElement" itemscope="" itemtype="http://schema.org/ListItem">
+      <a class="collection-breadcrumb__link" href="{{ routes.root_url }}" itemprop="item">
+        <span itemprop="name">Home</span>
+        <meta itemprop="position" content="1" />
+      </a>
+    </li>
+
+    {%- if collection -%}
+      {%- if collection.handle -%}
+        <li class="collection-breadcrumb__item" itemprop="itemListElement" itemscope="" itemtype="http://schema.org/ListItem">
+          <a class="collection-breadcrumb__link" href="{{ collection.url }}" itemprop="item">
+            <span itemprop="name">{{ collection.title }}</span>
+            <meta itemprop="position" content="2" />
+          </a>
+        </li>
+      {%- endif -%}
+    {%- endif -%}
+
+    <li class="collection-breadcrumb__item" itemprop="itemListElement" itemscope="" itemtype="http://schema.org/ListItem">
+      <span itemprop="name">{{ product.title }}</span>
+
+        {%- if collection -%}
+           {%- if collection.handle -%}
+             <meta itemprop="position" content="3" />
+           {%- endif -%}
+         {%- else -%}
+           <meta itemprop="position" content="2" />
+         {%- endif -%}
+      </li>
+  </ul>
+</nav>
+
+{% schema %}
+{
+  "name": "Product breadcrumb",
+  "class": "product-breadcrumb-block",
+  "settings": [
+  ],
+   "presets": [
+    {
+      "name": "Product breadcrumb"
+    }
+  ]
+}
+{% endschema %}

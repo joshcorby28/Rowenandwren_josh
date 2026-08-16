@@ -1,0 +1,108 @@
+{%- doc -%}
+  Renders `article.content`, splicing metafield-driven content blocks into the
+  body at the position of their placeholder tokens (the `code_tag` value the
+  editor typed into the rich-text body).
+
+  Each namespace is a set of *parallel* list metafields — entry N of `code_tag`
+  pairs with entry N of every other key in that namespace (matched by
+  `forloop.index0`):
+
+    - double_upsell     code_tag, left_image/left_caption/left_link,
+                        right_image/right_caption/right_link
+    - single_upsell     code_tag, image, caption, link
+    - full_width_image  code_tag, image, caption
+    - image_text        code_tag, image, caption, title, text
+
+  The rendered order of these blocks is determined by where each token sits in
+  the body text, not by the order of the loops below — every block replaces its
+  token in place.
+
+  @param {object} article - the article object (e.g. `closest.article`)
+
+  @example
+  {% render 'article-content', article: closest.article %}
+{%- enddoc -%}
+
+{%- assign article_content = article.content -%}
+
+{%- for upsell_code_tag in article.metafields.double_upsell.code_tag -%}
+  {%- if upsell_code_tag != blank -%}
+    {%- liquid
+      assign upsell_left_image = article.metafields.double_upsell.left_image[forloop.index0]
+      assign upsell_left_caption = article.metafields.double_upsell.left_caption[forloop.index0]
+      assign upsell_left_link = article.metafields.double_upsell.left_link[forloop.index0]
+
+      assign upsell_right_image = article.metafields.double_upsell.right_image[forloop.index0]
+      assign upsell_right_caption = article.metafields.double_upsell.right_caption[forloop.index0]
+      assign upsell_right_link = article.metafields.double_upsell.right_link[forloop.index0]
+    -%}
+
+    {%- capture upsell_code -%}
+      <div class="art-DoubleUpsell">
+        <div class="art-DoubleUpsell_Item">
+          {%- render 'article-upsell-item',
+            upsell_image: upsell_left_image,
+            upsell_caption: upsell_left_caption,
+            upsell_link: upsell_left_link
+          -%}
+        </div>
+
+        <div class="art-DoubleUpsell_Item">
+          {%- render 'article-upsell-item',
+            upsell_image: upsell_right_image,
+            upsell_caption: upsell_right_caption,
+            upsell_link: upsell_right_link
+          -%}
+        </div>
+      </div>
+    {%- endcapture -%}
+
+    {%- assign article_content = article_content | replace: upsell_code_tag, upsell_code -%}
+  {%- endif -%}
+{%- endfor -%}
+
+{%- for upsell_code_tag in article.metafields.single_upsell.code_tag -%}
+  {%- if upsell_code_tag != blank -%}
+    {%- capture upsell_code -%}
+      <div class="art-SingleUpsell">
+        {%- render 'article-single-upsell',
+          upsell_image: article.metafields.single_upsell.image[forloop.index0],
+          upsell_caption: article.metafields.single_upsell.caption[forloop.index0],
+          upsell_link: article.metafields.single_upsell.link[forloop.index0]
+        -%}
+      </div>
+    {%- endcapture -%}
+
+    {%- assign article_content = article_content | replace: upsell_code_tag, upsell_code -%}
+  {%- endif -%}
+{%- endfor -%}
+
+{%- for upsell_code_tag in article.metafields.full_width_image.code_tag -%}
+  {%- if upsell_code_tag != blank -%}
+    {%- capture upsell_code -%}
+      {%- render 'article-full-width-image',
+        upsell_image: article.metafields.full_width_image.image[forloop.index0],
+        upsell_caption: article.metafields.full_width_image.caption[forloop.index0]
+      -%}
+    {%- endcapture -%}
+
+    {%- assign article_content = article_content | replace: upsell_code_tag, upsell_code -%}
+  {%- endif -%}
+{%- endfor -%}
+
+{%- for upsell_code_tag in article.metafields.image_text.code_tag -%}
+  {%- if upsell_code_tag != blank -%}
+    {%- capture upsell_code -%}
+      {%- render 'article-image-text',
+        upsell_image: article.metafields.image_text.image[forloop.index0],
+        upsell_caption: article.metafields.image_text.caption[forloop.index0],
+        upsell_title: article.metafields.image_text.title[forloop.index0],
+        upsell_text: article.metafields.image_text.text[forloop.index0]
+      -%}
+    {%- endcapture -%}
+
+    {%- assign article_content = article_content | replace: upsell_code_tag, upsell_code -%}
+  {%- endif -%}
+{%- endfor -%}
+
+{{ article_content }}

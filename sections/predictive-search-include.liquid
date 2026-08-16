@@ -1,0 +1,97 @@
+{%- doc -%}
+  Supplemental predictive-search results: tagged, out-of-stock products.
+
+  WHY THIS EXISTS
+  Shopify's Predictive Search API (which populates the `predictive_search`
+  object used by sections/predictive-search.liquid) drops products with zero
+  inventory even when "Continue selling when out of stock" is enabled. Ranges
+  that are fully out of stock therefore never appear in the search dropdown,
+  even though they DO appear on the /search results page (that page uses the
+  standard search index, which includes them).
+
+  HOW IT WORKS
+  assets/predictive-search.js fetches this section via the Section Rendering
+  API against the /search route, so it renders against the STANDARD search
+  index (which includes out-of-stock products). It renders only products
+  carrying the `predictive-search-include` tag, so merchants opt specific
+  products in rather than surfacing every out-of-stock item in the store.
+
+  The JS then merges these cards into the predictive dropdown, de-duplicated
+  against the native results. See assets/predictive-search.js
+  #injectTaggedProducts.
+
+  SCOPE NOTE
+  Matching is scoped to the standard search index's results for the current
+  term (paginated to the first 50). This is a per-term window, NOT a limit on
+  how many products may be tagged — you can tag any number of products. For a
+  specific product-range term (e.g. a range name) all matches fall well inside
+  that window; only very broad terms with 50+ matches could push a tagged item
+  out of view in the dropdown (it still shows on /search).
+{%- enddoc -%}
+
+{%- liquid
+  assign include_tag = 'predictive-search-include'
+  assign hide_search_tag = 'hide_search_tag'
+-%}
+
+{%- capture items -%}
+  {%- paginate search.results by 50 -%}
+    {%- for product in search.results -%}
+      {%- if product.object_type != 'product' -%}{%- continue -%}{%- endif -%}
+      {%- unless product.tags contains include_tag -%}{%- continue -%}{%- endunless -%}
+      {%- if product.metafields.custom.hide_from_search.value or product.tags contains hide_search_tag -%}{%- continue -%}{%- endif -%}
+      <li
+        class="predictive-search-results__card predictive-search-results__card--product"
+        data-predictive-include-item
+      >
+        {% render 'resource-card',
+          resource_type: 'product',
+          resource: product,
+          image_width: 500,
+          image_hover: true,
+          image_aspect_ratio: '4 / 5'
+        %}
+      </li>
+    {%- endfor -%}
+  {%- endpaginate -%}
+{%- endcapture -%}
+
+<div data-predictive-include-root>
+  {%- if items contains 'data-predictive-include-item' -%}
+    <div
+      class="predictive-search-results__col predictive-search-results__col--right"
+      data-predictive-include-col
+    >
+      <div class="predictive-search-results__col-head">
+        <h4 class="predictive-search-results__title">
+          {{ 'content.search_results_resource_products' | t }}
+        </h4>
+        <a
+          class="predictive-search-results__view-all link"
+          href="{{ routes.search_url }}?q={{ search.terms | url_encode }}"
+        >
+          {{ 'content.search_results_view_all' | t }}
+        </a>
+      </div>
+      <div
+        id="predictive-search-products"
+        class="predictive-search-results__products"
+      >
+        <ul
+          class="predictive-search-results__list predictive-search-results__wrapper-products list-unstyled"
+          role="listbox"
+          aria-label="{{ 'content.search_results_resource_products' | t }}"
+        >
+          {{ items }}
+        </ul>
+      </div>
+    </div>
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "Predictive search include",
+  "settings": []
+}
+{% endschema %}

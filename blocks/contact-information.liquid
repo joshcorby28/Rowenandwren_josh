@@ -1,0 +1,173 @@
+{% style %}
+  .pg-Contact_Items {
+    display: flex;
+    justify-content: space-evenly;
+    flex-flow: row nowrap;
+  }
+
+  .pg-Contact_Item {
+    flex-flow: column;
+    justify-content: center;
+    display: flex;
+    text-align: center;
+    justify-items: center;
+  }
+
+  @media screen and (max-width: 749px) {
+    .pg-Contact_Items {
+      flex-flow: column;
+    }
+  }
+
+  .pg-Contact_Button {
+    margin: 15px auto 0;
+    background-color: #f0f0f0;
+    color: #717171;
+  }
+
+  .pg-Contact_Icon {
+    width: 30px;
+    height: 30px;
+    margin: 0 auto;
+  }
+
+  .pg-Contact_Heading {
+    margin-top: 20px;
+    font-size: .6875rem;
+    font-weight: 400;
+    letter-spacing: .0625rem;
+    line-height: .8125rem;
+    text-transform: uppercase;
+  }
+
+  .pg-Contact_Text {
+    margin-top: 10px;
+    font-size: .8125rem;
+    font-weight: 300;
+    letter-spacing: .0375rem;
+    line-height: 1.3125rem;
+  } 
+
+  .pg-Contact_Icon svg {
+    width: inherit;
+    height: inherit;
+  }
+
+  @media (max-width: 767px) {
+    .pg-Contact_Item {
+      margin-bottom: 30px;
+    }
+
+    .pg-Contact_Item:last-child {
+      margin-bottom: 0;
+    }
+  }
+{% endstyle %}
+
+<div class="pg-Contact_Items" 
+     style="
+      {% render 'spacing-style', settings: block.settings %}
+      {% render 'size-style', settings: block.settings %}
+">
+  <div class="pg-Contact_Item">
+    <div class="pg-Contact_Icon">
+      <svg viewBox="0 0 14 24" xmlns="http://www.w3.org/2000/svg"><g transform="translate(.49 .5)" stroke="currentColor" fill="none" fill-rule="evenodd"><rect x=".01" width="13" height="23" rx="2"/><path d="M0 19h12.99"/><path d="M6.51 21.07a.09.09 0 0 1-.09-.08.09.09 0 0 1 .09-.09.09.09 0 0 1 .08.09.09.09 0 0 1-.08.08Z" fill="currentColor" fill-rule="nonzero"/></g></svg>
+    </div>
+    <div class="pg-Contact_Heading">
+     <p>Telephone</p>
+    </div>
+    <div class="pg-Contact_Text rte-RichText">
+      <p>+44 (0)1276 451 077</p> 
+    </div>
+    <a
+     class="pg-Contact_Button button"
+     href="tel:+44 (0)1276 451 077"
+    >
+      Call us
+    </a>
+  </div>
+
+  <div class="pg-Contact_Item">
+    <div class="pg-Contact_Icon">
+      <svg viewBox="0 0 21 22" xmlns="http://www.w3.org/2000/svg"><g stroke="currentColor" stroke-width=".9" fill="none" fill-rule="evenodd"><path d="M12.64 2.35H1.26a.81.81 0 0 0-.81.81v16.63c0 .447.363.81.81.81h14.88a.81.81 0 0 0 .81-.81v-9.63" stroke-linecap="round"/><path stroke-linejoin="round" d="m8.56 9.85 2.56 2.56M16.3 2.1l2.57 2.56M11.12 12.41l-4.38 1.83 1.82-4.39 7.7-7.71L17.95.45l2.57 2.56-1.61 1.61z"/></g></svg>
+    </div>
+    <div class="pg-Contact_Heading">
+      <p>Email</p>
+    </div>
+    <div class="pg-Contact_Text rte-RichText">
+      care@rowenandwren.co.uk
+    </div>
+    <a
+     class="pg-Contact_Button button"
+     href="mailto:care@rowenandwren.co.uk"
+     target="_blank"
+    >
+     Email us
+    </a>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Contact information",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:settings.color_scheme",
+      "default": "scheme-1",
+      "visible_if": "{{ block.settings.inherit_color_scheme == false }}"
+    },
+    {
+      "type": "header",
+      "content": "t:content.padding"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start",
+      "label": "t:settings.left",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end",
+      "label": "t:settings.right",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    }
+  ],
+  "presets": [
+    {
+      "name": "Contact information",
+      "category": "t:categories.forms"
+    }
+  ]
+}
+{% endschema %}

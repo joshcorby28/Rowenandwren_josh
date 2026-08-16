@@ -1,0 +1,42 @@
+{%- doc -%}
+  OPTIONAL — Cart line-item pre-order note.
+
+  Ports the legacy `cart-line-item.liquid` / `push-cart-item.liquid` messaging
+  that explains a partial-stock pre-order in the cart, e.g. when a customer
+  orders more than the on-hand quantity of an item that also has future stock.
+
+  The `Pre-Order: Ships in ...` line-item property added on the product page is
+  already displayed by Horizon's native cart (any property whose key does not
+  start with `_`), so this snippet is only needed if you also want the richer
+  "N pieces are in stock, the remainder will ship ..." message.
+
+  Add it inside snippets/cart-products.liquid, within the item loop, near the
+  other per-item details (for example just after the closing tag of the
+  `cart-items__properties` <dl>):
+
+    {%- render 'preorder-cart-note', item: item -%}
+
+  @param {object} item - The cart line item.
+{%- enddoc -%}
+
+{%- liquid
+  assign onhandstock = item.variant.metafields.global.onhandstock | plus: 0
+  assign futurestock = item.variant.metafields.global.futurestock | plus: 0
+  assign earliestpodate = item.variant.metafields.global.earliestpodate
+
+  assign day = earliestpodate | date: '%-d' | plus: 0
+  assign month = earliestpodate | date: '%B'
+  if day <= 10
+    assign delivery_period = 'in early ' | append: month
+  elsif day <= 20
+    assign delivery_period = 'in mid ' | append: month
+  else
+    assign delivery_period = 'at the end of ' | append: month
+  endif
+-%}
+
+{%- if onhandstock > 0 and futurestock > 0 and earliestpodate != blank and item.quantity > onhandstock -%}
+  <p class="cart-items__preorder-note">
+    {{ onhandstock }} in stock for delivery now, the remainder will ship when in stock {{ delivery_period }}.
+  </p>
+{%- endif -%}

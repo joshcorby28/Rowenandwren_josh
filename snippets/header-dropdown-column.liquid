@@ -1,0 +1,64 @@
+{%- if links.size > 0 -%}
+  {%- comment -%}
+    Build the link class once and reuse it for both parent and leaf anchors,
+    rather than duplicating the conditional inline on every anchor element.
+  {%- endcomment -%}
+  {%- if level == 1 -%}
+    {%- assign link_class = 'hd-Dropdown_ColumnLink hd-Dropdown_ColumnLink-primary' -%}
+  {%- else -%}
+    {%- assign link_class = 'hd-Dropdown_ColumnLink' -%}
+  {%- endif -%}
+
+  <ul
+    class="hd-Dropdown_Column {% if level == 1 -%} hd-Dropdown_Column-active {%- endif %}"
+    data-el="header.navColumn"
+    data-nav-column-id="{{ handle }}"
+    data-nav-column-level="{{ level }}"
+    role="list"
+  >
+    {%- for link in links -%}
+      <li class="hd-Dropdown_ColumnItem">
+        {%- if link.links.size > 0 -%}
+          {%- assign list_handle = handle | append: ',' | append: link.handle -%}
+          {%- assign next_level = level | plus: 1 -%}
+
+          {%- comment -%}
+            aria-expanded is the correct ARIA attribute for a control that shows/hides
+            a related panel. The JS toggles this to "true" when the sub-column is open.
+            aria-selected (used previously) is only valid on option/tab/treeitem roles.
+          {%- endcomment -%}
+          <a
+            class="{{ link_class }}"
+            data-el="header.navColumnToggle"
+            data-nav-column-toggle="{{ list_handle }}"
+            aria-expanded="false"
+            aria-controls="nav-column-{{ list_handle | replace: ',', '-' }}"
+            href="{{ link.url }}"
+          >
+            {{ link.title }}
+
+            <span class="hd-Dropdown_ColumnIcon" aria-hidden="true">
+              <svg width="7" height="12" viewBox="0 0 7 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L6 6L1 11" stroke="#717171"/></svg>
+            </span>
+          </a>
+
+          {%-
+            render 'header-dropdown-column',
+            links: link.links,
+            handle: list_handle,
+            level: next_level,
+            title: link.title,
+            url: link.url,
+          -%}
+        {%- else -%}
+          <a
+            class="{{ link_class }}"
+            href="{{ link.url }}"
+          >
+            {{ link.title }}
+          </a>
+        {%- endif -%}
+      </li>
+    {%- endfor -%}
+  </ul>
+{%- endif -%}

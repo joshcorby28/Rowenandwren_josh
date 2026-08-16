@@ -1,0 +1,219 @@
+{%- doc -%}
+  Renders a single featured promo card for placement inside the product grid.
+  The outer <li> is provided by the caller (sections/main-collection.liquid) so
+  this snippet renders only the inner card content.
+
+  The promo metaobject is expected to have these fields:
+    - position       (integer)  Required. Used by caller for placement.
+    - media_type     (single_line) 'image' or 'video'. Defaults to 'image' if absent.
+    - image          (file_reference, image)
+    - video          (file_reference, video)
+    - heading        (single_line) Optional text overlay heading.
+    - text           (multi_line)  Optional text overlay body.
+    - link           (url)         Optional. If set, the whole card is a link
+                                   and a visual button is shown over the media.
+    - button_label   (single_line) Optional. Label for the button. Defaults to
+                                   "Shop now" if link is set but label is blank.
+
+  Visual behaviour:
+    - Aspect ratio inherits from the slot the card occupies (via
+      .product-media-container, which the existing product grid styles target).
+    - Video plays muted, looped, autoplay, playsinline — i.e. behaves like an
+      animated image, not a media player. No controls shown.
+    - On iOS < 16.4, the existing snippet forces aspect-ratio: auto for the
+      .product-media-container, which we reuse here so we get the same fallback.
+
+  @param {object} promo - The promo card metaobject.
+{%- enddoc -%}
+
+{%- liquid
+  assign media_type = promo.media_type | default: 'image'
+  assign has_text = false
+  if promo.heading != blank or promo.text != blank
+    assign has_text = true
+  endif
+  assign has_button = false
+  if promo.link != blank
+    assign has_button = true
+  endif
+  assign button_label = promo.button_label | default: 'Shop now'
+  assign has_overlay_content = false
+  if has_text or has_button
+    assign has_overlay_content = true
+  endif
+  assign tag = 'div'
+  if promo.link != blank
+    assign tag = 'a'
+  endif
+-%}
+
+<{{ tag }}
+  class="product-grid__promo-card{% if has_overlay_content %} product-grid__promo-card--has-overlay{% endif %}"
+  {% if tag == 'a' %}href="{{ promo.link }}"{% endif %}
+  {% if promo.heading != blank %}aria-label="{{ promo.heading | escape }}"{% endif %}
+>
+  <div class="product-grid__promo-card-media product-media-container">
+    {%- case media_type -%}
+      {%- when 'video' -%}
+        {%- comment -%}
+          On metaobjects, a `file_reference` field returns a metafield wrapper
+          (with .type and .value) rather than the resolved file object directly.
+          Calling .value dereferences it to the underlying Video / GenericFile
+          drop. Without .value you get back the raw GID string.
+
+          Once resolved, the video may be either:
+            - A Shopify Video object with `.sources` (multi-format), suitable
+              for the `video_tag` filter.
+            - A GenericFile with a `.url` (single source), rendered manually.
+        {%- endcomment -%}
+        {%- assign video_object = promo.video.value -%}
+        {%- if video_object != blank -%}
+          {%- if video_object.sources -%}
+            {{
+              video_object
+              | video_tag:
+                autoplay: true,
+                loop: true,
+                muted: true,
+                controls: false,
+                playsinline: true,
+                preload: 'metadata',
+                class: 'product-grid__promo-card-video'
+            }}
+          {%- else -%}
+            <video
+              class="product-grid__promo-card-video"
+              autoplay
+              loop
+              muted
+              playsinline
+              preload="metadata"
+            >
+              <source src="{{ video_object.url }}">
+            </video>
+          {%- endif -%}
+        {%- endif -%}
+      {%- else -%}
+        {%- if promo.image != blank -%}
+          {{
+            promo.image
+            | image_url: width: 1500
+            | image_tag:
+              loading: 'lazy',
+              widths: '300, 500, 750, 1000, 1500',
+              sizes: '(min-width: 750px) 25vw, 50vw',
+              class: 'product-grid__promo-card-image',
+              alt: promo.heading | default: promo.image.alt | default: ''
+          }}
+        {%- endif -%}
+    {%- endcase -%}
+
+    {%- if has_overlay_content -%}
+      <div class="product-grid__promo-card-overlay" aria-hidden="true"></div>
+      <div class="product-grid__promo-card-content">
+        {%- if promo.heading != blank -%}
+          <p class="product-grid__promo-card-heading h3">{{ promo.heading }}</p>
+        {%- endif -%}
+        {%- if promo.text != blank -%}
+          <p class="product-grid__promo-card-text">{{ promo.text }}</p>
+        {%- endif -%}
+        {%- if has_button -%}
+          {%- comment -%}
+            Rendered as a <span> with role="presentation" because the entire
+            card is already an <a> — nesting a real <button> or <a> would be
+            invalid HTML. Visually it reads as a button; the click target is
+            the whole card.
+          {%- endcomment -%}
+          <span class="product-grid__promo-card-button link" role="presentation">
+            {{ button_label }}
+          </span>
+        {%- endif -%}
+      </div>
+    {%- endif -%}
+  </div>
+</{{ tag }}>
+
+{% stylesheet %}
+  .product-grid__promo-card {
+    display: block;
+    position: relative;
+    height: 100%;
+    width: 100%;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  /* Don't let the promo cell stretch to the full row height (image + title +
+     price) — collapse it to its own content height. */
+  .product-grid__item--promo {
+    align-self: start;
+  }
+
+  /* The media div also carries the shared `.product-media-container` class,
+     which base.css styles at higher specificity (it sets aspect-ratio,
+     display:flex, and object-fit on the image). These selectors deliberately
+     include the extra class names so they out-specify those base rules —
+     don't simplify them back to `.product-grid__promo-card-media`. */
+  .product-grid__item--promo .product-grid__promo-card-media.product-media-container {
+    aspect-ratio: var(--promo-card-aspect-ratio, 4 / 5);
+    max-height: none;
+  }
+
+  .product-grid__item--promo .product-grid__promo-card-media img,
+  .product-grid__item--promo .product-grid__promo-card-media video {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;   /* cancel the `aspect-ratio: inherit` from base.css */
+    object-fit: cover;    /* crop to fill the ratio box instead of letterboxing */
+    display: block;
+  }
+
+  /* Dark overlay layer for legibility, separate from the content block so the
+     text/button render at full opacity above it. Tunable via --promo-overlay-opacity. */
+  .product-grid__promo-card-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .product-grid__promo-card-content {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: var(--padding-md, 1rem);
+    color: white;
+    gap: 0.75rem;
+    /* Don't intercept clicks on the underlying card link except where needed. */
+    pointer-events: none;
+  }
+
+  .product-grid__promo-card-heading,
+  .product-grid__promo-card-text {
+    margin: 0;
+    /* Constrain line length on wider cards so centred text doesn't run edge to edge. */
+    max-width: 22ch;
+  }
+
+  .product-grid__promo-card-button {
+    /* Sits below the text. Margin-top adds a bit more breathing room than the
+       parent's gap, since the button is a distinct visual element. */
+    margin-top: 0.25rem;
+    /* Re-enable pointer events so the cursor shows as pointer specifically over
+       the button. The whole card is still clickable via the parent <a>. */
+    pointer-events: auto;
+  }
+
+  .product-grid__promo-card-heading.h3 {
+    font-size: 1.375rem;
+    font-weight: 400;
+    line-height: 1.75rem;
+  }
+
+  .product-grid__promo-card-image {
+    transition: transform 0.4s ease;
+  }
+{% endstylesheet %}
