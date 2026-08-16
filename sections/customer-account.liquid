@@ -9,11 +9,11 @@
     {%- if section.settings.header_image != blank -%}
       {{
         section.settings.header_image
-        | image_url: width: 1440
+        | image_url: width: 1920
         | image_tag:
-          class: 'customer-account__aside-image',
+          class: 'customer-account__hero-image',
           loading: 'lazy',
-          widths: '720, 900, 1080, 1440',
+          widths: '900, 1200, 1440, 1920',
           sizes: '100vw'
       }}
     {%- endif -%}
@@ -30,18 +30,94 @@
           widths: '540, 720, 900, 1200',
           sizes: '(min-width: 901px) 50vw, 100vw'
       }}
-    {%- else -%}
-      {%- if section.settings.header_image != blank -%}
-        {{
-          section.settings.header_image
-          | image_url: width: 1200
-          | image_tag:
-            class: 'customer-account__aside-image',
-            loading: 'lazy',
-            widths: '540, 720, 900, 1200',
-            sizes: '(min-width: 901px) 50vw, 100vw'
-        }}
-      {%- endif -%}
+    {%- elsif section.settings.header_image != blank -%}
+      {{
+        section.settings.header_image
+        | image_url: width: 1200
+        | image_tag:
+          class: 'customer-account__aside-image',
+          loading: 'lazy',
+          widths: '540, 720, 900, 1200',
+          sizes: '(min-width: 901px) 50vw, 100vw'
+      }}
+    {%- endif -%}
+  </template>
+
+  <template data-welcome-image>
+    {%- if section.settings.welcome_image != blank -%}
+      {{
+        section.settings.welcome_image
+        | image_url: width: 900
+        | image_tag:
+          class: 'customer-account__welcome-image',
+          loading: 'lazy',
+          widths: '450, 600, 750, 900',
+          sizes: '(min-width: 901px) 40vw, 100vw'
+      }}
+    {%- elsif section.settings.login_image != blank -%}
+      {{
+        section.settings.login_image
+        | image_url: width: 900
+        | image_tag:
+          class: 'customer-account__welcome-image',
+          loading: 'lazy',
+          widths: '450, 600, 750, 900',
+          sizes: '(min-width: 901px) 40vw, 100vw'
+      }}
+    {%- endif -%}
+  </template>
+
+  <template data-seasonal-stories>
+    {%- if section.settings.show_seasonal_stories -%}
+      <div class="customer-account__seasonal">
+        <div class="customer-account__inner">
+          <h2 class="customer-account__seasonal-title">{{ section.settings.seasonal_stories_title | default: 'Seasonal Stories' }}</h2>
+          <div class="customer-account__seasonal-grid">
+            {%- if section.settings.story_1_image != blank -%}
+              <article class="customer-account__story">
+                <a href="{{ section.settings.story_1_link | default: '#' }}" class="customer-account__story-link">
+                  {{
+                    section.settings.story_1_image
+                    | image_url: width: 800
+                    | image_tag:
+                      class: 'customer-account__story-image',
+                      loading: 'lazy',
+                      widths: '400, 600, 800',
+                      sizes: '(min-width: 901px) 40vw, 100vw'
+                  }}
+                  <div class="customer-account__story-caption">
+                    <p class="customer-account__story-title">{{ section.settings.story_1_title }}</p>
+                    {%- if section.settings.story_1_link_label != blank -%}
+                      <span class="customer-account__link">{{ section.settings.story_1_link_label }}</span>
+                    {%- endif -%}
+                  </div>
+                </a>
+              </article>
+            {%- endif -%}
+            {%- if section.settings.story_2_image != blank -%}
+              <article class="customer-account__story">
+                <a href="{{ section.settings.story_2_link | default: '#' }}" class="customer-account__story-link">
+                  {{
+                    section.settings.story_2_image
+                    | image_url: width: 800
+                    | image_tag:
+                      class: 'customer-account__story-image',
+                      loading: 'lazy',
+                      widths: '400, 600, 800',
+                      sizes: '(min-width: 901px) 40vw, 100vw'
+                  }}
+                  <div class="customer-account__story-caption">
+                    <p class="customer-account__story-title">{{ section.settings.story_2_title }}</p>
+                    {%- if section.settings.story_2_link_label != blank -%}
+                      <span class="customer-account__link">{{ section.settings.story_2_link_label }}</span>
+                    {%- endif -%}
+                  </div>
+                </a>
+              </article>
+            {%- endif -%}
+          </div>
+        </div>
+      </div>
     {%- endif -%}
   </template>
 
@@ -52,6 +128,14 @@
       "redirectUri": {% if settings.customer_account_page != blank %}{{ settings.customer_account_page | json }}{% else %}{{ request.origin | append: page.url | json }}{% endif %},
       "shopDomain": {{ shop.permanent_domain | json }},
       "mockMode": {{ section.settings.use_mock_data | json }},
+      "content": {
+        "returnsUrl": {{ section.settings.returns_url | default: "/pages/returns" | json }},
+        "collectionUrl": {{ section.settings.collection_url | default: "/collections/all" | json }},
+        "welcomeEyebrow": {{ section.settings.welcome_eyebrow | json }},
+        "welcomeHeading": {{ section.settings.welcome_heading | json }},
+        "welcomeBody": {{ section.settings.welcome_body | json }},
+        "welcomeCta": {{ section.settings.welcome_cta_label | json }}
+      },
       "strings": {
         "loading": {{ 'customer_account.loading' | t | json }},
         "try_again": {{ 'customer_account.try_again' | t | json }},
@@ -67,14 +151,17 @@
         "sign_in_description": {{ 'customer_account.sign_in_description' | t | json }},
         "new_user": {{ 'customer_account.new_user' | t | json }},
         "join_us": {{ 'customer_account.join_us' | t | json }},
-        "account_overview": {{ 'customer_account.overview' | t | json }},
-        "orders": {{ 'content.account_orders' | t | json }},
-        "addresses": {{ 'customer_account.addresses' | t | json }},
-        "log_out": {{ 'actions.log_out' | t | json }},
+        "nav_welcome": {{ 'customer_account.nav_welcome' | t | json }},
+        "nav_address_book": {{ 'customer_account.nav_address_book' | t | json }},
+        "nav_orders": {{ 'customer_account.nav_orders' | t | json }},
+        "nav_returns": {{ 'customer_account.nav_returns' | t | json }},
+        "nav_logout": {{ 'customer_account.nav_logout' | t | json }},
+        "welcome_hero": {{ 'customer_account.welcome_hero' | t | json }},
+        "welcome_eyebrow": {{ 'customer_account.welcome_eyebrow' | t | json }},
+        "welcome_heading": {{ 'customer_account.welcome_heading' | t | json }},
+        "welcome_body": {{ 'customer_account.welcome_body' | t | json }},
+        "welcome_cta": {{ 'customer_account.welcome_cta' | t | json }},
         "account_navigation": {{ 'customer_account.navigation' | t | json }},
-        "welcome": {{ 'customer_account.welcome' | t | json }},
-        "view_all_orders": {{ 'customer_account.view_all_orders' | t | json }},
-        "recent_orders": {{ 'customer_account.recent_orders' | t | json }},
         "no_orders": {{ 'customer_account.no_orders' | t | json }},
         "order_not_found": {{ 'customer_account.order_not_found' | t | json }},
         "back_to_orders": {{ 'customer_account.back_to_orders' | t | json }},
@@ -124,25 +211,132 @@
   "settings": [
     {
       "type": "paragraph",
-      "content": "Branded customer account powered by Shopify Customer Account API. Create a page with handle 'account' and assign this template. Configure the Client ID in Theme settings > Customer account."
+      "content": "Branded customer account powered by Shopify Customer Account API. Create a page with handle 'account' and assign this template."
     },
     {
       "type": "checkbox",
       "id": "use_mock_data",
       "label": "Use mock account data",
-      "info": "Preview the account area with sample orders and addresses. No API credentials required. Turn off before publishing.",
+      "info": "Preview with sample data. No API credentials required. Turn off before publishing.",
       "default": false
+    },
+    {
+      "type": "header",
+      "content": "Hero & sign in"
     },
     {
       "type": "image_picker",
       "id": "header_image",
-      "label": "Header background image"
+      "label": "Hero background image"
     },
     {
       "type": "image_picker",
       "id": "login_image",
-      "label": "Login / register side image",
-      "info": "Shown beside sign-in on desktop. Falls back to header image."
+      "label": "Sign-in side image"
+    },
+    {
+      "type": "header",
+      "content": "A Warm Welcome"
+    },
+    {
+      "type": "text",
+      "id": "welcome_eyebrow",
+      "label": "Eyebrow text",
+      "default": "A lovely new addition"
+    },
+    {
+      "type": "text",
+      "id": "welcome_heading",
+      "label": "Heading",
+      "default": "Welcome Back"
+    },
+    {
+      "type": "textarea",
+      "id": "welcome_body",
+      "label": "Body text",
+      "default": "It's good to see you again. You'll notice a few new things since your last visit. Pieces made to be used, lived with, and gathered around. Take a look around when it suits."
+    },
+    {
+      "type": "text",
+      "id": "welcome_cta_label",
+      "label": "Collection link label",
+      "default": "Browse Our Current Collection"
+    },
+    {
+      "type": "url",
+      "id": "collection_url",
+      "label": "Collection link"
+    },
+    {
+      "type": "image_picker",
+      "id": "welcome_image",
+      "label": "Welcome panel image"
+    },
+    {
+      "type": "url",
+      "id": "returns_url",
+      "label": "Returns page URL",
+      "default": "/pages/returns"
+    },
+    {
+      "type": "header",
+      "content": "Seasonal Stories"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_seasonal_stories",
+      "label": "Show Seasonal Stories",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "seasonal_stories_title",
+      "label": "Section title",
+      "default": "Seasonal Stories"
+    },
+    {
+      "type": "image_picker",
+      "id": "story_1_image",
+      "label": "Story 1 image"
+    },
+    {
+      "type": "text",
+      "id": "story_1_title",
+      "label": "Story 1 title",
+      "default": "Our British Upholstery Collection"
+    },
+    {
+      "type": "text",
+      "id": "story_1_link_label",
+      "label": "Story 1 link label",
+      "default": "View Our Edit"
+    },
+    {
+      "type": "url",
+      "id": "story_1_link",
+      "label": "Story 1 link"
+    },
+    {
+      "type": "image_picker",
+      "id": "story_2_image",
+      "label": "Story 2 image"
+    },
+    {
+      "type": "text",
+      "id": "story_2_title",
+      "label": "Story 2 title",
+      "default": "Hardware"
+    },
+    {
+      "type": "text",
+      "id": "story_2_link_label",
+      "label": "Story 2 link label",
+      "default": "View Our Edit"
+    },
+    {
+      "type": "url",
+      "id": "story_2_link",
+      "label": "Story 2 link"
     }
   ],
   "presets": [

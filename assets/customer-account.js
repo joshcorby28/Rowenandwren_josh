@@ -6,7 +6,7 @@
 const STORAGE_PREFIX = 'rw_customer_account_';
 const API_VERSION = '2026-01';
 
-/** @typedef {'overview' | 'orders' | 'order' | 'addresses'} AccountView */
+/** @typedef {'welcome' | 'orders' | 'order' | 'addresses'} AccountView */
 
 /**
  * @param {string} key
@@ -146,9 +146,9 @@ const MOCK_ORDER_3 = 'gid://shopify/Order/1003';
 /** In-memory mock store for interactive address testing */
 const mockStore = {
   customer: {
-    firstName: 'Emily',
-    lastName: 'Ashworth',
-    emailAddress: { emailAddress: 'emily.ashworth@example.com' },
+    firstName: 'Joshua',
+    lastName: 'Corby',
+    emailAddress: { emailAddress: 'joshua@example.com' },
   },
   defaultAddressId: 'gid://shopify/MailingAddress/1',
   addresses: [
@@ -366,7 +366,7 @@ function mockOrderListNode(order) {
 async function mockGraphql(query, variables = {}) {
   await new Promise((resolve) => setTimeout(resolve, 350));
 
-  if (query.includes('CustomerOverview') || query.includes('CustomerOrders')) {
+  if (query.includes('CustomerOverview') || query.includes('CustomerWelcome') || query.includes('CustomerFirstName') || query.includes('CustomerOrders')) {
     const limit = query.includes('first: 5') ? 5 : 20;
     return {
       customer: {
@@ -471,6 +471,12 @@ class CustomerAccountApp {
   /** @type {boolean} */
   #mockSignedOut = false;
 
+  /** @type {Record<string, string>} */
+  #content = {};
+
+  /** @type {string | null} */
+  #customerFirstName = null;
+
   /**
    * @param {HTMLElement} root
    * @param {Record<string, unknown>} config
@@ -478,6 +484,7 @@ class CustomerAccountApp {
   constructor(root, config) {
     this.#root = root;
     this.#strings = /** @type {Record<string, string>} */ (config.strings || {});
+    this.#content = /** @type {Record<string, string>} */ (config.content || {});
     this.#clientId = String(config.clientId || '');
     this.#redirectUri = String(config.redirectUri || window.location.href.split('?')[0].split('#')[0]);
     this.#shopDomain = String(config.shopDomain || window.location.hostname);
@@ -745,7 +752,7 @@ class CustomerAccountApp {
       this.#isAuthenticated = false;
       this.#removeMockBanner();
       document.dispatchEvent(new CustomEvent('customer-account:auth-change', { detail: { authenticated: false } }));
-      this.#navigate('overview');
+      this.#navigate('welcome');
       await this.#renderCurrentView();
       return;
     }
@@ -754,7 +761,7 @@ class CustomerAccountApp {
     const logoutEndpoint = this.#endpoints?.logout_endpoint;
 
     this.#clearSession();
-    this.#navigate('overview');
+    this.#navigate('welcome');
 
     if (logoutEndpoint && idToken) {
       const url = new URL(logoutEndpoint);
@@ -809,7 +816,7 @@ class CustomerAccountApp {
    */
   #getRoute() {
     const params = new URLSearchParams(window.location.search);
-    const view = /** @type {AccountView} */ (params.get('view') || 'overview');
+    const view = /** @type {AccountView} */ (params.get('view') || 'welcome');
     const orderId = params.get('order_id');
     return { view, orderId };
   }
@@ -864,7 +871,7 @@ class CustomerAccountApp {
           await this.#renderAddresses();
           break;
         default:
-          await this.#renderOverview();
+          await this.#renderWelcome();
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : this.#t('error_generic');
@@ -956,10 +963,11 @@ class CustomerAccountApp {
   }
 
   #navHtml(activeView) {
+    const returnsUrl = this.#content.returnsUrl || '/pages/returns';
     const items = [
-      { view: 'overview', label: this.#t('account_overview') },
-      { view: 'orders', label: this.#t('orders') },
-      { view: 'addresses', label: this.#t('addresses') },
+      { view: 'welcome', label: this.#t('nav_welcome') },
+      { view: 'addresses', label: this.#t('nav_address_book') },
+      { view: 'orders', label: this.#t('nav_orders') },
     ];
 
     const links = items
@@ -973,7 +981,8 @@ class CustomerAccountApp {
       <nav class="customer-account__nav" aria-label="${escapeHtml(this.#t('account_navigation'))}">
         <ul class="customer-account__nav-list">
           ${links}
-          <li class="customer-account__nav-item"><button type="button" class="customer-account__nav-button" data-logout>${escapeHtml(this.#t('log_out'))}</button></li>
+          <li class="customer-account__nav-item"><a class="customer-account__nav-link${activeView === 'returns' ? ' customer-account__nav-link--active' : ''}" href="${escapeHtml(returnsUrl)}">${escapeHtml(this.#t('nav_returns'))}</a></li>
+          <li class="customer-account__nav-item"><button type="button" class="customer-account__nav-button" data-logout>${escapeHtml(this.#t('nav_logout'))}</button></li>
         </ul>
       </nav>
     `;
@@ -986,7 +995,7 @@ class CustomerAccountApp {
     this.#root?.querySelectorAll('[data-nav-view]').forEach((link) => {
       link.addEventListener('click', (event) => {
         event.preventDefault();
-        const view = /** @type {AccountView} */ (link.getAttribute('data-nav-view') || 'overview');
+        const view = /** @type {AccountView} */ (link.getAttribute('data-nav-view') || 'welcome');
         this.#navigate(view);
       });
     });
@@ -996,72 +1005,69 @@ class CustomerAccountApp {
     });
   }
 
-  async #renderOverview() {
+  async #ensureCustomerFirstName() {
+    if (this.#customerFirstName) return;
+
     const data = await this.#graphql(`
-      query CustomerOverview {
+      query CustomerFirstName {
         customer {
           firstName
-          lastName
-          emailAddress { emailAddress }
-          orders(first: 5, sortKey: PROCESSED_AT, reverse: true) {
-            edges {
-              node {
-                id
-                name
-                processedAt
-                financialStatus
-                fulfillmentStatus
-                totalPrice { amount currencyCode }
-                lineItems(first: 1) {
-                  edges {
-                    node {
-                      title
-                      image { url altText }
-                    }
-                  }
-                }
-              }
-            }
-          }
         }
       }
     `);
 
-    const customer = data.customer;
-    const orders = customer.orders.edges.map((edge) => edge.node);
-    const displayName = [customer.firstName, customer.lastName].filter(Boolean).join(' ') || customer.emailAddress?.emailAddress;
+    this.#customerFirstName = data.customer?.firstName || '';
+  }
 
-    const ordersHtml = orders.length
-      ? orders.map((order) => this.#orderRowHtml(order)).join('')
-      : `<p>${escapeHtml(this.#t('no_orders'))}</p>`;
+  async #renderWelcome() {
+    const data = await this.#graphql(`
+      query CustomerWelcome {
+        customer {
+          firstName
+        }
+      }
+    `);
+
+    const firstName = data.customer?.firstName || '';
+    this.#customerFirstName = firstName;
+
+    const section = this.#root?.closest('[data-customer-account-section]');
+    const welcomeImage = section?.querySelector('[data-welcome-image]')?.innerHTML || '';
+    const seasonalStories = section?.querySelector('[data-seasonal-stories]')?.innerHTML || '';
+
+    const collectionUrl = this.#content.collectionUrl || '/collections/all';
 
     if (!this.#root) return;
 
     this.#root.innerHTML = `
       <section class="customer-account customer-account--dashboard">
-        ${this.#dashboardHeaderHtml(this.#t('account_title'))}
-        <div class="customer-account__inner">
-          ${this.#navHtml('overview')}
-          <div class="customer-account__columns">
-            <div>
-              <h2 class="customer-account__welcome">${escapeHtml(this.#t('welcome', { name: displayName }))}</h2>
-              <p class="customer-account__email">${escapeHtml(customer.emailAddress?.emailAddress || '')}</p>
-              <a href="#" class="customer-account__link" data-nav-view="orders">${escapeHtml(this.#t('view_all_orders'))}</a>
-            </div>
-            <div class="customer-account__column customer-account__column--orders">
-              <h3 class="customer-account__section-title">${escapeHtml(this.#t('recent_orders'))}</h3>
-              ${ordersHtml}
-            </div>
+        ${this.#dashboardHeaderHtml(firstName)}
+        <div class="customer-account__nav-wrap">
+          <div class="customer-account__inner">
+            ${this.#navHtml('welcome')}
           </div>
         </div>
+        <div class="customer-account__inner">
+          <div class="customer-account__welcome-panel">
+            <div class="customer-account__welcome-copy">
+              <p class="customer-account__welcome-eyebrow">${escapeHtml(this.#content.welcomeEyebrow || this.#t('welcome_eyebrow'))}</p>
+              <h2 class="customer-account__welcome-heading">${escapeHtml(this.#content.welcomeHeading || this.#t('welcome_heading'))}</h2>
+              <p class="customer-account__welcome-body">${escapeHtml(this.#content.welcomeBody || this.#t('welcome_body'))}</p>
+              <a class="customer-account__link customer-account__welcome-cta" href="${escapeHtml(collectionUrl)}">${escapeHtml(this.#content.welcomeCta || this.#t('welcome_cta'))}</a>
+            </div>
+            <div class="customer-account__welcome-media">${welcomeImage}</div>
+          </div>
+        </div>
+        ${seasonalStories}
       </section>
     `;
 
-    this.#bindNav('overview');
-    this.#bindOrderLinks();
+    this.#bindNav('welcome');
   }
 
   async #renderOrders() {
+    await this.#ensureCustomerFirstName();
+
     const data = await this.#graphql(`
       query CustomerOrders {
         customer {
@@ -1098,9 +1104,13 @@ class CustomerAccountApp {
 
     this.#root.innerHTML = `
       <section class="customer-account customer-account--dashboard">
-        ${this.#dashboardHeaderHtml(this.#t('orders'))}
+        ${this.#dashboardHeaderHtml(this.#customerFirstName)}
+        <div class="customer-account__nav-wrap">
+          <div class="customer-account__inner">
+            ${this.#navHtml('orders')}
+          </div>
+        </div>
         <div class="customer-account__inner">
-          ${this.#navHtml('orders')}
           <div class="customer-account__column customer-account__column--orders">
             ${ordersHtml}
           </div>
@@ -1120,6 +1130,8 @@ class CustomerAccountApp {
       this.#navigate('orders');
       return;
     }
+
+    await this.#ensureCustomerFirstName();
 
     const data = await this.#graphql(
       `
@@ -1198,9 +1210,13 @@ class CustomerAccountApp {
       if (!this.#root) return;
       this.#root.innerHTML = `
         <section class="customer-account customer-account--dashboard">
-          ${this.#dashboardHeaderHtml(this.#t('orders'))}
+          ${this.#dashboardHeaderHtml(this.#customerFirstName)}
+          <div class="customer-account__nav-wrap">
+            <div class="customer-account__inner">
+              ${this.#navHtml('orders')}
+            </div>
+          </div>
           <div class="customer-account__inner">
-            ${this.#navHtml('orders')}
             <div class="customer-account__state"><p>${escapeHtml(this.#t('order_not_found'))}</p></div>
           </div>
         </section>
@@ -1251,9 +1267,13 @@ class CustomerAccountApp {
 
     this.#root.innerHTML = `
       <section class="customer-account customer-account--dashboard">
-        ${this.#dashboardHeaderHtml(order.name)}
+        ${this.#dashboardHeaderHtml(this.#customerFirstName)}
+        <div class="customer-account__nav-wrap">
+          <div class="customer-account__inner">
+            ${this.#navHtml('orders')}
+          </div>
+        </div>
         <div class="customer-account__inner">
-          ${this.#navHtml('orders')}
           <a href="#" class="customer-account__link customer-account__back-link" data-nav-view="orders">${escapeHtml(this.#t('back_to_orders'))}</a>
           <div class="customer-account__order-detail-grid">
             <div>
@@ -1290,6 +1310,8 @@ class CustomerAccountApp {
   }
 
   async #renderAddresses() {
+    await this.#ensureCustomerFirstName();
+
     const data = await this.#graphql(`
       query CustomerAddresses {
         customer {
@@ -1326,9 +1348,13 @@ class CustomerAccountApp {
 
     this.#root.innerHTML = `
       <section class="customer-account customer-account--dashboard">
-        ${this.#dashboardHeaderHtml(this.#t('addresses'))}
+        ${this.#dashboardHeaderHtml(this.#customerFirstName)}
+        <div class="customer-account__nav-wrap">
+          <div class="customer-account__inner">
+            ${this.#navHtml('addresses')}
+          </div>
+        </div>
         <div class="customer-account__inner">
-          ${this.#navHtml('addresses')}
           <div class="customer-account__column customer-account__column--addresses">
             <button type="button" class="button" data-show-address-form="new">${escapeHtml(this.#t('add_address'))}</button>
             <div class="customer-account__address-form" data-address-form="new">${this.#addressFormHtml()}</div>
@@ -1375,14 +1401,17 @@ class CustomerAccountApp {
   }
 
   /**
-   * @param {string} title
+   * @param {string | null | undefined} firstName
    */
-  #dashboardHeaderHtml(title) {
+  #dashboardHeaderHtml(firstName) {
     const section = this.#root?.closest('[data-customer-account-section]');
     const headerImage = section?.querySelector('[data-header-image]')?.innerHTML || '';
+    const title = firstName
+      ? this.#t('welcome_hero', { name: firstName })
+      : this.#t('account_title');
 
     return `
-      <header class="customer-account__header">
+      <header class="customer-account__header customer-account__header--hero">
         <div class="customer-account__header-image">${headerImage}</div>
         <div class="customer-account__header-content">
           <h1 class="customer-account__header-title">${escapeHtml(title)}</h1>
