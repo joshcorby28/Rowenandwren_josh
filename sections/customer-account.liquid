@@ -130,7 +130,7 @@
       "shopDomain": {{ shop.permanent_domain | json }},
       "mockMode": {{ section.settings.use_mock_data | json }},
       "content": {
-        "returnsUrl": {{ section.settings.returns_url | default: "/pages/returns" | json }},
+        "returnsUrl": {{ section.settings.returns_url | default: "https://www.rowenandwren.co.uk/a/returns" | json }},
         "collectionUrl": {{ section.settings.collection_url | default: "/collections/all" | json }},
         "welcomeEyebrow": {{ section.settings.welcome_eyebrow | default: "A lovely new addition" | json }},
         "welcomeHeading": {{ section.settings.welcome_heading | default: "Welcome Back" | json }},
@@ -163,6 +163,11 @@
         "welcome_body": {{ 'customer_account.welcome_body' | t | json }},
         "welcome_cta": {{ 'customer_account.welcome_cta' | t | json }},
         "account_navigation": {{ 'customer_account.navigation' | t | json }},
+        "addresses_hero": {{ 'customer_account.addresses_hero' | t | json }},
+        "orders_hero": {{ 'customer_account.orders_hero' | t | json }},
+        "add_new_address": {{ 'customer_account.add_new_address' | t | json }},
+        "your_addresses": {{ 'customer_account.your_addresses' | t | json }},
+        "set_default_address": {{ 'customer_account.set_default_address' | t | json }},
         "no_orders": {{ 'customer_account.no_orders' | t | json }},
         "order_not_found": {{ 'customer_account.order_not_found' | t | json }},
         "back_to_orders": {{ 'customer_account.back_to_orders' | t | json }},
@@ -277,7 +282,7 @@
       "type": "url",
       "id": "returns_url",
       "label": "Returns page URL",
-      "default": "/pages/returns"
+      "default": "https://www.rowenandwren.co.uk/a/returns"
     },
     {
       "type": "header",

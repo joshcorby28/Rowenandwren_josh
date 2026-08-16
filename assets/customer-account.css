@@ -27,12 +27,6 @@
   padding-bottom: 0;
 }
 
-@media screen and (min-width: 901px) {
-  .customer-account--dashboard {
-    margin-top: 0;
-  }
-}
-
 .customer-account__header--hero {
   height: 420px;
   min-height: 420px;
@@ -47,7 +41,6 @@
 
 .customer-account__nav-wrap {
   background: var(--color-background);
-  border-bottom: 1px solid var(--account-border);
 }
 
 .customer-account__nav-wrap .customer-account__nav {
@@ -91,6 +84,10 @@
   padding: calc(var(--header-group-height, 80px) + 2rem) 1.5rem 2rem;
 }
 
+.customer-account--dashboard .customer-account__header-content {
+  padding: 1.5rem;
+}
+
 .customer-account__header-title {
   margin: 0;
   font-size: 1.875rem;
@@ -103,6 +100,18 @@
   max-width: var(--page-width);
   margin-inline: auto;
   padding-inline: var(--page-margin, 1.5rem);
+}
+
+.customer-account__page {
+  padding-top: 2.5rem;
+  padding-bottom: 3.5rem;
+}
+
+@media screen and (min-width: 901px) {
+  .customer-account__page {
+    padding-top: 4.5rem;
+    padding-bottom: 5.5rem;
+  }
 }
 
 .customer-account__body {
@@ -175,20 +184,56 @@
 }
 
 .customer-account__form-row {
-  margin-bottom: 0.625rem;
+  margin-bottom: 0.75rem;
 }
 
 .customer-account__input {
   width: 100%;
-  height: 32px;
-  padding: 1px 0.5rem;
-  border: 0;
+  height: 42px;
+  padding: 0 0.75rem;
+  border: 1px solid rgba(0, 0, 0, 0.18);
   background: #fff;
   color: inherit;
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.customer-account__select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%23333' stroke-width='1.2' d='M1 1.5l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  padding-right: 2.25rem;
+}
+
+.customer-account__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.75rem 0 1.25rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.customer-account__submit {
+  width: 100%;
+  padding: 0.9rem 1rem;
+  border: 0;
+  background: #e6e6e0;
+  color: inherit;
+  font: inherit;
+  font-size: 0.75rem;
+  letter-spacing: 0.08rem;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.customer-account__submit:hover {
+  background: #dcdcd6;
 }
 
 .customer-account__form-footer {
-  margin-top: 1.25rem;
+  margin-top: 0.5rem;
 }
 
 .customer-account__form-actions {
@@ -237,8 +282,8 @@
     justify-content: center;
     align-items: center;
     flex-wrap: wrap;
-    gap: 2rem;
-    padding: 1.25rem 0;
+    gap: 2.75rem;
+    padding: 2.5rem 0 2.25rem;
   }
 }
 
@@ -295,15 +340,15 @@
 .customer-account__welcome-panel {
   display: grid;
   gap: 2rem;
-  padding: 2.5rem 0 3rem;
+  padding: 0;
 }
 
 @media screen and (min-width: 901px) {
   .customer-account__welcome-panel {
     grid-template-columns: 1fr 1fr;
-    gap: 3rem;
+    gap: 4.5rem;
     align-items: center;
-    padding: 3.5rem 0 4rem;
+    padding: 0;
   }
 }
 
@@ -388,16 +433,32 @@
 
 .customer-account__columns {
   display: grid;
-  gap: 2rem;
+  gap: 2.5rem;
 }
 
 @media screen and (min-width: 901px) {
   .customer-account__columns {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 3rem;
-    margin-top: 4rem;
-    margin-bottom: 5rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4.5rem;
+    align-items: start;
   }
+}
+
+.customer-account__column-title {
+  margin: 0 0 1.5rem;
+  font-size: 1.375rem;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.customer-account__column--form {
+  background: transparent;
+  padding: 0;
+}
+
+.customer-account__column--form .customer-account__address-form {
+  display: block;
+  margin-top: 0;
 }
 
 .customer-account__column--orders {
@@ -408,13 +469,31 @@
 
 @media screen and (min-width: 901px) {
   .customer-account__column--orders {
-    padding: 2rem 1.5rem 2.5rem;
+    padding: 2.25rem 2rem 2.75rem;
   }
 }
 
 .customer-account__column--addresses {
   background-color: var(--account-grey-bg);
-  padding: 2rem 1.5rem;
+  padding: 1.75rem 1.5rem 2.25rem;
+}
+
+@media screen and (min-width: 901px) {
+  .customer-account__column--addresses {
+    padding: 2rem 2rem 2.5rem;
+  }
+}
+
+.customer-account__column--addresses .customer-account__column-title {
+  padding-bottom: 1rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--account-border);
+}
+
+.customer-account__empty {
+  margin: 0;
+  font-size: 0.8125rem;
+  opacity: 0.7;
 }
 
 .customer-account__welcome {
@@ -520,14 +599,19 @@
 }
 
 .customer-account__address {
-  padding: 1.5rem 0;
+  padding: 1.25rem 0;
   border-top: 1px solid var(--account-border);
 }
 
+.customer-account__column--addresses .customer-account__address:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
 .customer-account__address--default {
-  background-color: var(--account-grey-bg);
-  padding: 1.5rem;
-  margin-inline: -1.5rem;
+  background: transparent;
+  padding: 1.25rem 0;
+  margin-inline: 0;
 }
 
 .customer-account__address-actions {

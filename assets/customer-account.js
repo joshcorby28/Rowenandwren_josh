@@ -425,6 +425,7 @@ async function mockGraphql(query, variables = {}) {
     const addressInput = /** @type {Record<string, string>} */ (variables.address || {});
     const id = `gid://shopify/MailingAddress/${Date.now()}`;
     mockStore.addresses.push({ ...addressInput, id });
+    if (variables.defaultAddress) mockStore.defaultAddressId = id;
     return { customerAddressCreate: { customerAddress: { id }, userErrors: [] } };
   }
 
@@ -454,6 +455,24 @@ const DEFAULT_STRINGS = {
   welcome_cta: 'Browse Our Current Collection',
   account_navigation: 'Account navigation',
   account_title: 'Account',
+  addresses_hero: 'Your Addresses',
+  orders_hero: 'Your Orders',
+  add_new_address: 'Add A New Address',
+  your_addresses: 'Your Addresses',
+  no_addresses: "You haven't added any addresses yet.",
+  add_address: 'Add Address',
+  update_address: 'Update Address',
+  set_default_address: 'Set as default address',
+  first_name: 'First name*',
+  last_name: 'Last name*',
+  company: 'Company name (optional)',
+  address1: 'Address*',
+  address2: 'Apartment, suite, etc. (optional)',
+  city: 'City*',
+  province: 'County / State',
+  postcode: 'Postcode*',
+  country: 'Select Country *',
+  phone: 'Phone',
 };
 
 class CustomerAccountApp {
@@ -985,7 +1004,7 @@ class CustomerAccountApp {
   }
 
   #navHtml(activeView) {
-    const returnsUrl = this.#content.returnsUrl || '/pages/returns';
+    const returnsUrl = this.#content.returnsUrl || 'https://www.rowenandwren.co.uk/a/returns';
     const items = [
       { view: 'welcome', label: this.#t('nav_welcome') },
       { view: 'addresses', label: this.#t('nav_address_book') },
@@ -1063,13 +1082,13 @@ class CustomerAccountApp {
 
     this.#root.innerHTML = `
       <section class="customer-account customer-account--dashboard">
-        ${this.#dashboardHeaderHtml(firstName)}
+        ${this.#dashboardHeaderHtml('welcome')}
         <div class="customer-account__nav-wrap">
           <div class="customer-account__inner">
             ${this.#navHtml('welcome')}
           </div>
         </div>
-        <div class="customer-account__inner">
+        <div class="customer-account__inner customer-account__page">
           <div class="customer-account__welcome-panel">
             <div class="customer-account__welcome-copy">
               <p class="customer-account__welcome-eyebrow">${escapeHtml(this.#content.welcomeEyebrow || this.#t('welcome_eyebrow'))}</p>
@@ -1126,13 +1145,13 @@ class CustomerAccountApp {
 
     this.#root.innerHTML = `
       <section class="customer-account customer-account--dashboard">
-        ${this.#dashboardHeaderHtml(this.#customerFirstName)}
+        ${this.#dashboardHeaderHtml('orders')}
         <div class="customer-account__nav-wrap">
           <div class="customer-account__inner">
             ${this.#navHtml('orders')}
           </div>
         </div>
-        <div class="customer-account__inner">
+        <div class="customer-account__inner customer-account__page">
           <div class="customer-account__column customer-account__column--orders">
             ${ordersHtml}
           </div>
@@ -1232,13 +1251,13 @@ class CustomerAccountApp {
       if (!this.#root) return;
       this.#root.innerHTML = `
         <section class="customer-account customer-account--dashboard">
-          ${this.#dashboardHeaderHtml(this.#customerFirstName)}
+          ${this.#dashboardHeaderHtml('orders')}
           <div class="customer-account__nav-wrap">
             <div class="customer-account__inner">
               ${this.#navHtml('orders')}
             </div>
           </div>
-          <div class="customer-account__inner">
+          <div class="customer-account__inner customer-account__page">
             <div class="customer-account__state"><p>${escapeHtml(this.#t('order_not_found'))}</p></div>
           </div>
         </section>
@@ -1289,13 +1308,13 @@ class CustomerAccountApp {
 
     this.#root.innerHTML = `
       <section class="customer-account customer-account--dashboard">
-        ${this.#dashboardHeaderHtml(this.#customerFirstName)}
+        ${this.#dashboardHeaderHtml('orders')}
         <div class="customer-account__nav-wrap">
           <div class="customer-account__inner">
             ${this.#navHtml('orders')}
           </div>
         </div>
-        <div class="customer-account__inner">
+        <div class="customer-account__inner customer-account__page">
           <a href="#" class="customer-account__link customer-account__back-link" data-nav-view="orders">${escapeHtml(this.#t('back_to_orders'))}</a>
           <div class="customer-account__order-detail-grid">
             <div>
@@ -1364,23 +1383,28 @@ class CustomerAccountApp {
 
     const listHtml = addresses.length
       ? addresses.map((address) => this.#addressCardHtml(address, address.id === defaultId)).join('')
-      : `<p>${escapeHtml(this.#t('no_addresses'))}</p>`;
+      : `<p class="customer-account__empty">${escapeHtml(this.#t('no_addresses'))}</p>`;
 
     if (!this.#root) return;
 
     this.#root.innerHTML = `
       <section class="customer-account customer-account--dashboard">
-        ${this.#dashboardHeaderHtml(this.#customerFirstName)}
+        ${this.#dashboardHeaderHtml('addresses')}
         <div class="customer-account__nav-wrap">
           <div class="customer-account__inner">
             ${this.#navHtml('addresses')}
           </div>
         </div>
-        <div class="customer-account__inner">
-          <div class="customer-account__column customer-account__column--addresses">
-            <button type="button" class="button" data-show-address-form="new">${escapeHtml(this.#t('add_address'))}</button>
-            <div class="customer-account__address-form" data-address-form="new">${this.#addressFormHtml()}</div>
-            ${listHtml}
+        <div class="customer-account__inner customer-account__page">
+          <div class="customer-account__columns">
+            <div class="customer-account__column customer-account__column--form">
+              <h2 class="customer-account__column-title">${escapeHtml(this.#t('add_new_address'))}</h2>
+              <div class="customer-account__address-form customer-account__address-form--active" data-address-form="new">${this.#addressFormHtml({}, { includeDefault: true })}</div>
+            </div>
+            <div class="customer-account__column customer-account__column--addresses">
+              <h2 class="customer-account__column-title">${escapeHtml(this.#t('your_addresses'))}</h2>
+              ${listHtml}
+            </div>
           </div>
         </div>
       </section>
@@ -1423,14 +1447,21 @@ class CustomerAccountApp {
   }
 
   /**
-   * @param {string | null | undefined} firstName
+   * @param {'welcome' | 'orders' | 'addresses'} view
    */
-  #dashboardHeaderHtml(firstName) {
+  #dashboardHeaderHtml(view) {
     const section = this.#root?.closest('[data-customer-account-section]');
     const headerImage = section?.querySelector('[data-header-image]')?.innerHTML || '';
-    const title = firstName
-      ? this.#t('welcome_hero', { name: firstName })
-      : this.#t('account_title');
+    const firstName = this.#customerFirstName;
+    let title = this.#t('account_title');
+
+    if (view === 'addresses') {
+      title = this.#t('addresses_hero');
+    } else if (view === 'orders') {
+      title = this.#t('orders_hero');
+    } else if (firstName) {
+      title = this.#t('welcome_hero', { name: firstName });
+    }
 
     return `
       <header class="customer-account__header customer-account__header--hero">
@@ -1482,8 +1513,25 @@ class CustomerAccountApp {
 
   /**
    * @param {Record<string, any>} [address]
+   * @param {{ includeDefault?: boolean }} [options]
    */
-  #addressFormHtml(address = {}) {
+  #addressFormHtml(address = {}, options = {}) {
+    const selectedCountry = address.country || '';
+    const countries = ['United Kingdom', 'Ireland', 'France', 'Germany', 'Netherlands', 'Belgium', 'United States', 'Canada', 'Australia', 'New Zealand'];
+    const countryOptions = countries
+      .map((country) => {
+        const selected = country === selectedCountry ? ' selected' : '';
+        return `<option value="${escapeHtml(country)}"${selected}>${escapeHtml(country)}</option>`;
+      })
+      .join('');
+
+    const defaultCheckbox = options.includeDefault
+      ? `<label class="customer-account__checkbox">
+          <input type="checkbox" name="defaultAddress">
+          <span>${escapeHtml(this.#t('set_default_address'))}</span>
+        </label>`
+      : '';
+
     return `
       <form class="customer-account__address-form-inner" data-address-form-inner="${escapeHtml(address.id || 'new')}">
         <div class="customer-account__form-row"><input class="customer-account__input" name="firstName" placeholder="${escapeHtml(this.#t('first_name'))}" value="${escapeHtml(address.firstName || '')}" required></div>
@@ -1494,10 +1542,16 @@ class CustomerAccountApp {
         <div class="customer-account__form-row"><input class="customer-account__input" name="city" placeholder="${escapeHtml(this.#t('city'))}" value="${escapeHtml(address.city || '')}" required></div>
         <div class="customer-account__form-row"><input class="customer-account__input" name="province" placeholder="${escapeHtml(this.#t('province'))}" value="${escapeHtml(address.province || '')}"></div>
         <div class="customer-account__form-row"><input class="customer-account__input" name="zip" placeholder="${escapeHtml(this.#t('postcode'))}" value="${escapeHtml(address.zip || '')}" required></div>
-        <div class="customer-account__form-row"><input class="customer-account__input" name="country" placeholder="${escapeHtml(this.#t('country'))}" value="${escapeHtml(address.country || '')}" required></div>
+        <div class="customer-account__form-row">
+          <select class="customer-account__input customer-account__select" name="country" required>
+            <option value="">${escapeHtml(this.#t('country'))}</option>
+            ${countryOptions}
+          </select>
+        </div>
         <div class="customer-account__form-row"><input class="customer-account__input" name="phoneNumber" placeholder="${escapeHtml(this.#t('phone'))}" value="${escapeHtml(address.phoneNumber || '')}"></div>
+        ${defaultCheckbox}
         <div class="customer-account__form-footer">
-          <button type="submit" class="button">${escapeHtml(address.id ? this.#t('update_address') : this.#t('add_address'))}</button>
+          <button type="submit" class="customer-account__submit">${escapeHtml(address.id ? this.#t('update_address') : this.#t('add_address'))}</button>
         </div>
       </form>
     `;
@@ -1545,6 +1599,8 @@ class CustomerAccountApp {
         const target = /** @type {HTMLFormElement} */ (event.currentTarget);
         const formId = target.getAttribute('data-address-form-inner');
         const formData = new FormData(target);
+        const makeDefault = formData.get('defaultAddress') === 'on';
+        formData.delete('defaultAddress');
         const address = Object.fromEntries(formData.entries());
 
         if (formId && formId !== 'new') {
@@ -1558,15 +1614,23 @@ class CustomerAccountApp {
             { id: formId, address }
           );
         } else {
-          await this.#graphql(
-            `mutation CreateAddress($address: CustomerAddressInput!) {
-              customerAddressCreate(address: $address) {
+          const created = await this.#graphql(
+            `mutation CreateAddress($address: CustomerAddressInput!, $defaultAddress: Boolean) {
+              customerAddressCreate(address: $address, defaultAddress: $defaultAddress) {
                 customerAddress { id }
                 userErrors { message }
               }
             }`,
-            { address }
+            { address, defaultAddress: makeDefault }
           );
+
+          const createdId = created.customerAddressCreate?.customerAddress?.id;
+          if (makeDefault && createdId) {
+            await this.#graphql(
+              `mutation DefaultAddress($id: ID!) { customerAddressSetDefault(addressId: $id) { customerAddress { id } userErrors { message } } }`,
+              { id: createdId }
+            );
+          }
         }
 
         await this.#renderAddresses();
