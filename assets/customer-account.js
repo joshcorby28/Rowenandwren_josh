@@ -136,6 +136,26 @@ function formatStatus(status) {
     .join(' ');
 }
 
+/**
+ * @param {ParentNode | null | undefined} scope
+ * @param {string} selector
+ */
+function readTemplateHtml(scope, selector) {
+  const el = scope?.querySelector(selector);
+  if (!el) return '';
+
+  if (el instanceof HTMLTemplateElement) {
+    const fromInner = el.innerHTML.trim();
+    if (fromInner) return fromInner;
+
+    const wrap = document.createElement('div');
+    wrap.appendChild(el.content.cloneNode(true));
+    return wrap.innerHTML.trim();
+  }
+
+  return el.innerHTML.trim();
+}
+
 /** @type {string} */
 const MOCK_ORDER_1 = 'gid://shopify/Order/1001';
 /** @type {string} */
@@ -953,7 +973,8 @@ class CustomerAccountApp {
     if (!this.#root) return;
 
     const section = this.#root.closest('[data-customer-account-section]');
-    const loginImage = section?.querySelector('[data-login-image]')?.innerHTML || '';
+    const loginImage =
+      readTemplateHtml(section, '[data-login-image]') || readTemplateHtml(section, '[data-header-image]');
 
     this.#root.innerHTML = `
       <section class="customer-account customer-account--guest">
@@ -1091,8 +1112,8 @@ class CustomerAccountApp {
     this.#customerFirstName = firstName;
 
     const section = this.#root?.closest('[data-customer-account-section]');
-    const welcomeImage = section?.querySelector('[data-welcome-image]')?.innerHTML || '';
-    const seasonalStories = section?.querySelector('[data-seasonal-stories]')?.innerHTML || '';
+    const welcomeImage = readTemplateHtml(section, '[data-welcome-image]') || readTemplateHtml(section, '[data-login-image]');
+    const seasonalStories = readTemplateHtml(section, '[data-seasonal-stories]');
 
     const collectionUrl = this.#content.collectionUrl || '/collections/all';
 
@@ -1469,7 +1490,7 @@ class CustomerAccountApp {
    */
   #dashboardHeaderHtml(view) {
     const section = this.#root?.closest('[data-customer-account-section]');
-    const headerImage = section?.querySelector('[data-header-image]')?.innerHTML || '';
+    const headerImage = readTemplateHtml(section, '[data-header-image]');
     const firstName = this.#customerFirstName;
     let title = this.#t('account_title');
 

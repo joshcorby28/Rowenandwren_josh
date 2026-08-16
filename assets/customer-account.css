@@ -1,9 +1,9 @@
 /* Rowen & Wren branded customer account – matches live legacy account styling */
 
 .customer-account {
-  --account-bg: #6a6a66;
-  --account-box-bg: #ffffff;
-  --account-grey-bg: #ecece6;
+  --account-bg: #5c5c41;
+  --account-box-bg: #f4f4f0;
+  --account-grey-bg: #f4f4f0;
   --account-border: rgba(0, 0, 0, 0.12);
   --account-header-overlay: rgba(0, 0, 0, 0.35);
   --account-btn: #4a4a47;
@@ -132,15 +132,11 @@
   .customer-account__body--split {
     grid-template-columns: repeat(12, 1fr);
     gap: 3rem;
+    align-items: start;
   }
 
   .customer-account__main {
     grid-column: 1 / span 6;
-  }
-
-  .customer-account__aside {
-    grid-column: 7 / -1;
-    display: block;
   }
 }
 
@@ -148,18 +144,25 @@
   display: none;
 }
 
+@media screen and (min-width: 901px) {
+  .customer-account__body--split .customer-account__aside {
+    grid-column: 7 / -1;
+    display: block;
+  }
+}
+
 .customer-account__aside-image,
 .customer-account__aside img {
+  display: block;
   width: 100%;
-  height: 100%;
+  height: auto;
   min-height: 400px;
   object-fit: cover;
 }
 
 @media screen and (min-width: 901px) {
-  .customer-account--guest .customer-account__aside,
-  .customer-account--guest .customer-account__aside img,
-  .customer-account--guest .customer-account__aside-image {
+  .customer-account--guest .customer-account__aside-image,
+  .customer-account--guest .customer-account__aside img {
     min-height: 700px;
     height: 700px;
     object-fit: cover;
