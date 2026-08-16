@@ -12,7 +12,9 @@
     "main": {
       "type": "customer-account",
       "settings": {
-        "use_mock_data": true
+        "use_mock_data": true,
+        "header_image": "shopify://shop_images/AccountPage1_ff0496b3-21d4-4fd1-9ded-e75d7425e5cb.jpg",
+        "login_image": "shopify://shop_images/LoginPageMay2.jpg"
       }
     }
   },
