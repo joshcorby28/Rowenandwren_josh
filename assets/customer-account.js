@@ -537,9 +537,11 @@ const DEFAULT_STRINGS = {
   account_navigation: 'Account navigation',
   account_title: 'Account',
   sign_in: 'Sign In',
+  sign_in_secure_note:
+    'Sign in or create an account using the secure options below.',
+  sign_in_or_join: 'Sign in or join us',
+  join_us_note: 'New to Rowen & Wren? Create an account using the same secure sign-in.',
   email_address: 'Email address',
-  password: 'Password',
-  forgotten_password: 'Forgotten your password?',
   new_user: 'New User?',
   join_us: 'Join us',
   addresses_hero: 'Your Addresses',
@@ -604,6 +606,15 @@ class CustomerAccountApp {
   /** @type {string} */
   #regionCountry = 'GB';
 
+  /** @type {boolean} */
+  #useShopifyAuthEmbed = false;
+
+  /** @type {string} */
+  #customerAccountMenu = 'customer-account-main-menu';
+
+  /** @type {string} */
+  #accountSignInUrl = '/pages/account';
+
   /** @type {{ authorization_endpoint?: string; token_endpoint?: string; logout_endpoint?: string; graphql_api?: string } | null} */
   #endpoints = null;
 
@@ -643,6 +654,9 @@ class CustomerAccountApp {
     this.#shopDomain = String(config.shopDomain || window.location.hostname);
     this.#locale = String(config.locale || document.documentElement.lang || 'en-GB');
     this.#regionCountry = String(config.regionCountry || 'GB');
+    this.#useShopifyAuthEmbed = Boolean(config.useShopifyAuthEmbed);
+    this.#customerAccountMenu = String(config.customerAccountMenu || 'customer-account-main-menu');
+    this.#accountSignInUrl = String(config.accountSignInUrl || '/pages/account');
     this.#mockMode = resolveMockMode(config);
     this.#mockPersistParam = new URLSearchParams(window.location.search).has('mock');
   }
@@ -675,6 +689,12 @@ class CustomerAccountApp {
 
       await this.#discoverEndpoints();
 
+      this.#cleanOAuthErrors();
+
+      if (await this.#handleShopifyAuthRedirect()) {
+        return;
+      }
+
       const handledCallback = await this.#handleOAuthCallback();
       if (!handledCallback) {
         await this.#ensureValidSession();
@@ -682,11 +702,19 @@ class CustomerAccountApp {
 
       this.#bindPopState();
       await this.#renderCurrentView(hasBootShell);
+
+      if (!this.#isAuthenticated && this.#useShopifyAuthEmbed) {
+        this.#initShopifyAuthEmbed();
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : this.#t('error_generic');
       if (this.#root?.querySelector('[data-account-boot]')) {
         this.#showGuestError(message);
-        this.#bindGuestEvents();
+        if (this.#useShopifyAuthEmbed) {
+          this.#initShopifyAuthEmbed();
+        } else {
+          this.#bindGuestEvents();
+        }
       } else {
         this.#renderError(message);
       }
@@ -767,6 +795,24 @@ class CustomerAccountApp {
     if (!this.#endpoints.authorization_endpoint || !this.#endpoints.token_endpoint) {
       throw new Error(this.#t('error_discovery'));
     }
+  }
+
+  async #handleShopifyAuthRedirect() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('code') || params.get('error')) return false;
+
+    const loginHint = params.get('login_hint');
+    const hasAuthParams = Boolean(loginHint || params.get('acr_values') || params.get('login_hint_mode'));
+    if (!hasAuthParams) return false;
+
+    const cleanUrl = new URL(window.location.href);
+    ['login_hint', 'login_hint_mode', 'acr_values'].forEach((key) => {
+      cleanUrl.searchParams.delete(key);
+    });
+    window.history.replaceState({}, '', cleanUrl.toString());
+
+    await this.#startLogin({ loginHint: loginHint || undefined });
+    return true;
   }
 
   async #handleOAuthCallback() {
@@ -907,7 +953,23 @@ class CustomerAccountApp {
     document.dispatchEvent(new CustomEvent('customer-account:auth-change', { detail: { authenticated: false } }));
   }
 
-  async #startLogin() {
+  #cleanOAuthErrors() {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.get('error')) return false;
+
+    const isBenign = params.get('error') === 'login_required';
+    const cleanUrl = new URL(window.location.href);
+    ['error', 'error_description', 'state'].forEach((key) => {
+      cleanUrl.searchParams.delete(key);
+    });
+    window.history.replaceState({}, '', cleanUrl.toString());
+    return isBenign;
+  }
+
+  /**
+   * @param {{ prompt?: string }} [options]
+   */
+  async #startLogin(options = {}) {
     if (!this.#clientId) {
       throw new Error(this.#t('error_client_id'));
     }
@@ -934,12 +996,115 @@ class CustomerAccountApp {
     url.searchParams.set('locale', this.#locale);
     url.searchParams.set('region_country', this.#regionCountry);
 
-    const emailHint = this.#root?.querySelector('[data-login-form] [name="email"]')?.value.trim();
-    if (emailHint) {
-      url.searchParams.set('login_hint', emailHint);
+    if (options.prompt) {
+      url.searchParams.set('prompt', options.prompt);
+    }
+
+    const loginHint =
+      options.loginHint ||
+      this.#root?.querySelector('[data-login-form] [name="email"]')?.value.trim() ||
+      new URLSearchParams(window.location.search).get('login_hint');
+    if (loginHint) {
+      url.searchParams.set('login_hint', loginHint);
     }
 
     window.location.assign(url.toString());
+  }
+
+  #initShopifyAuthEmbed() {
+    const embedHost = this.#root?.querySelector('[data-shopify-account-embed]');
+    const accountEl = embedHost?.querySelector('shopify-account');
+    if (!embedHost || !accountEl) return;
+
+    const openAuth = () => {
+      accountEl
+        .querySelector('[data-shopify-auth-trigger], [slot="signed-out-avatar"]')
+        ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    };
+
+    if (accountEl.dataset.embedBound === 'true') return;
+    accountEl.dataset.embedBound = 'true';
+
+    accountEl.addEventListener('close', () => {
+      this.#syncAfterShopifyAuth();
+    });
+
+    this.#root?.querySelectorAll('[data-open-shopify-auth]').forEach((button) => {
+      button.addEventListener('click', () => {
+        openAuth();
+      });
+    });
+  }
+
+  async #syncAfterShopifyAuth() {
+    if (this.#mockMode) return;
+
+    try {
+      if (!this.#endpoints?.authorization_endpoint) {
+        await this.#discoverEndpoints();
+      }
+
+      await this.#ensureValidSession();
+      if (this.#isAuthenticated) {
+        await this.#renderCurrentView();
+        return;
+      }
+
+      await this.#startLogin({ prompt: 'none' });
+    } catch {
+      /* Guest can retry from the embedded sign-in */
+    }
+  }
+
+  #guestAuthEmbedHtml() {
+    return `
+      <div class="customer-account__item customer-account__item--auth">
+        <div class="customer-account__box customer-account__box--auth">
+          <h2 class="customer-account__box-title">${escapeHtml(this.#t('sign_in'))}</h2>
+          <p class="customer-account__box-text">${escapeHtml(this.#t('sign_in_secure_note'))}</p>
+          <div class="customer-account__auth-embed" data-shopify-account-embed>
+            <shopify-account menu="${escapeHtml(this.#customerAccountMenu)}" sign-in-url="${escapeHtml(this.#accountSignInUrl)}">
+              <button type="button" slot="signed-out-avatar" class="customer-account__btn customer-account__auth-trigger" data-shopify-auth-trigger>
+                ${escapeHtml(this.#t('sign_in_or_join'))}
+              </button>
+            </shopify-account>
+          </div>
+        </div>
+      </div>
+      <div class="customer-account__item">
+        <div class="customer-account__box">
+          <h2 class="customer-account__box-title">${escapeHtml(this.#t('new_user'))}</h2>
+          <p class="customer-account__box-text">${escapeHtml(this.#t('join_us_note'))}</p>
+          <button type="button" class="customer-account__btn customer-account__sign-up" data-open-shopify-auth>${escapeHtml(this.#t('join_us'))}</button>
+        </div>
+      </div>
+    `;
+  }
+
+  #guestAuthFallbackHtml() {
+    return `
+      <div class="customer-account__item">
+        <div class="customer-account__box">
+          <h2 class="customer-account__box-title">${escapeHtml(this.#t('sign_in'))}</h2>
+          <p class="customer-account__box-text">${escapeHtml(this.#t('sign_in_secure_note'))}</p>
+          <form class="customer-account__login-form" data-login-form action="#" method="post" novalidate>
+            <div class="customer-account__form-row">
+              <input class="customer-account__input" type="email" name="email" placeholder="${escapeHtml(this.#t('email_address'))}" autocomplete="email">
+            </div>
+            <div class="customer-account__form-footer">
+              <button type="button" class="customer-account__btn customer-account__sign-in">${escapeHtml(this.#t('sign_in'))}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="customer-account__item">
+        <div class="customer-account__box">
+          <h2 class="customer-account__box-title">${escapeHtml(this.#t('new_user'))}</h2>
+          <p class="customer-account__box-text">${escapeHtml(this.#t('join_us_note'))}</p>
+          <button type="button" class="customer-account__btn customer-account__sign-up">${escapeHtml(this.#t('join_us'))}</button>
+        </div>
+      </div>
+    `;
   }
 
   #renderMockBanner() {
@@ -1084,7 +1249,11 @@ class CustomerAccountApp {
 
     if (!this.#isAuthenticated) {
       if (hydrateGuest && this.#root.querySelector('[data-account-boot]')) {
-        this.#bindGuestEvents();
+        if (this.#useShopifyAuthEmbed) {
+          this.#initShopifyAuthEmbed();
+        } else {
+          this.#bindGuestEvents();
+        }
         return;
       }
 
@@ -1136,29 +1305,7 @@ class CustomerAccountApp {
           ${message ? `<div class="customer-account__state customer-account__state--error"><p>${escapeHtml(message)}</p></div>` : ''}
           <div class="customer-account__body customer-account__body--split">
             <div class="customer-account__items">
-              <div class="customer-account__item">
-                <div class="customer-account__box">
-                  <h2 class="customer-account__box-title">${escapeHtml(this.#t('sign_in'))}</h2>
-                  <form class="customer-account__login-form" data-login-form action="#" method="post" novalidate>
-                    <div class="customer-account__form-row">
-                      <input class="customer-account__input" type="email" name="email" placeholder="${escapeHtml(this.#t('email_address'))}" autocomplete="email">
-                    </div>
-                    <div class="customer-account__form-row">
-                      <input class="customer-account__input" type="password" name="password" placeholder="${escapeHtml(this.#t('password'))}" autocomplete="current-password">
-                    </div>
-                    <div class="customer-account__form-footer">
-                      <button type="button" class="customer-account__btn customer-account__sign-in">${escapeHtml(this.#t('sign_in'))}</button>
-                      <a class="customer-account__link customer-account__forgot" href="${escapeHtml(this.#loginUrl)}#recover">${escapeHtml(this.#t('forgotten_password'))}</a>
-                    </div>
-                  </form>
-                </div>
-              </div>
-              <div class="customer-account__item">
-                <div class="customer-account__box">
-                  <h2 class="customer-account__box-title">${escapeHtml(this.#t('new_user'))}</h2>
-                  <button type="button" class="customer-account__btn customer-account__sign-up">${escapeHtml(this.#t('join_us'))}</button>
-                </div>
-              </div>
+              ${this.#useShopifyAuthEmbed ? this.#guestAuthEmbedHtml() : this.#guestAuthFallbackHtml()}
             </div>
             <aside class="customer-account__aside">${loginImage}</aside>
           </div>
@@ -1166,10 +1313,20 @@ class CustomerAccountApp {
       </section>
     `;
 
+    if (this.#useShopifyAuthEmbed) {
+      this.#initShopifyAuthEmbed();
+      return;
+    }
+
     this.#bindGuestEvents();
   }
 
   #bindGuestEvents() {
+    if (this.#useShopifyAuthEmbed) {
+      this.#initShopifyAuthEmbed();
+      return;
+    }
+
     if (this.#root?.dataset.guestBound === 'true') return;
     if (this.#root) this.#root.dataset.guestBound = 'true';
 

@@ -1,5 +1,9 @@
 {{ 'customer-account.css' | asset_url | stylesheet_tag }}
 
+{%- unless section.settings.use_mock_data -%}
+  <script src="https://cdn.shopify.com/storefront/web-components/account.js" type="module" crossorigin="anonymous"></script>
+{%- endunless -%}
+
 <section
   class="customer-account-section"
   data-customer-account-section
@@ -135,6 +139,12 @@
     unless account_redirect contains 'http'
       assign account_redirect = shop.url | append: account_redirect
     endunless
+    assign account_sign_in_path = account_page_path
+    assign use_shopify_auth_embed = false
+    if shop.customer_accounts_enabled and section.settings.use_shopify_auth_embed and section.settings.use_mock_data == false
+      assign use_shopify_auth_embed = true
+    endif
+    assign customer_account_menu = section.settings.customer_account_menu | default: 'customer-account-main-menu'
   -%}
 
   <div data-customer-account-app>
@@ -142,29 +152,53 @@
       <div class="customer-account__inner">
         <div class="customer-account__body customer-account__body--split">
           <div class="customer-account__items">
-            <div class="customer-account__item">
-              <div class="customer-account__box">
-                <h2 class="customer-account__box-title">{{ 'customer_account.sign_in' | t }}</h2>
-                <form class="customer-account__login-form" data-login-form action="#" method="post" novalidate>
-                  <div class="customer-account__form-row">
-                    <input class="customer-account__input" type="email" name="email" placeholder="{{ 'customer_account.email_address' | t }}" autocomplete="email">
+            {%- if use_shopify_auth_embed -%}
+              <div class="customer-account__item customer-account__item--auth">
+                <div class="customer-account__box customer-account__box--auth">
+                  <h2 class="customer-account__box-title">{{ 'customer_account.sign_in' | t }}</h2>
+                  <p class="customer-account__box-text">{{ 'customer_account.sign_in_secure_note' | t }}</p>
+                  <div class="customer-account__auth-embed" data-shopify-account-embed>
+                    <shopify-account
+                      menu="{{ customer_account_menu }}"
+                      sign-in-url="{{ account_sign_in_path }}"
+                    >
+                      <button type="button" slot="signed-out-avatar" class="customer-account__btn customer-account__auth-trigger" data-shopify-auth-trigger>
+                        {{ 'customer_account.sign_in_or_join' | t }}
+                      </button>
+                    </shopify-account>
                   </div>
-                  <div class="customer-account__form-row">
-                    <input class="customer-account__input" type="password" name="password" placeholder="{{ 'customer_account.password' | t }}" autocomplete="current-password">
-                  </div>
-                  <div class="customer-account__form-footer">
-                    <button type="button" class="customer-account__btn customer-account__sign-in">{{ 'customer_account.sign_in' | t }}</button>
-                    <a class="customer-account__link customer-account__forgot" href="{{ routes.account_login_url }}#recover">{{ 'customer_account.forgotten_password' | t }}</a>
-                  </div>
-                </form>
+                </div>
               </div>
-            </div>
-            <div class="customer-account__item">
-              <div class="customer-account__box">
-                <h2 class="customer-account__box-title">{{ 'customer_account.new_user' | t }}</h2>
-                <button type="button" class="customer-account__btn customer-account__sign-up">{{ 'customer_account.join_us' | t }}</button>
+              <div class="customer-account__item">
+                <div class="customer-account__box">
+                  <h2 class="customer-account__box-title">{{ 'customer_account.new_user' | t }}</h2>
+                  <p class="customer-account__box-text">{{ 'customer_account.join_us_note' | t }}</p>
+                  <button type="button" class="customer-account__btn customer-account__sign-up" data-open-shopify-auth>{{ 'customer_account.join_us' | t }}</button>
+                </div>
               </div>
-            </div>
+            {%- else -%}
+              <div class="customer-account__item">
+                <div class="customer-account__box">
+                  <h2 class="customer-account__box-title">{{ 'customer_account.sign_in' | t }}</h2>
+                  <p class="customer-account__box-text">{{ 'customer_account.sign_in_secure_note' | t }}</p>
+                  <form class="customer-account__login-form" data-login-form action="#" method="post" novalidate>
+                    <div class="customer-account__form-row">
+                      <input class="customer-account__input" type="email" name="email" placeholder="{{ 'customer_account.email_address' | t }}" autocomplete="email">
+                    </div>
+                    <div class="customer-account__form-footer">
+                      <button type="button" class="customer-account__btn customer-account__sign-in">{{ 'customer_account.sign_in' | t }}</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+              <div class="customer-account__item">
+                <div class="customer-account__box">
+                  <h2 class="customer-account__box-title">{{ 'customer_account.new_user' | t }}</h2>
+                  <p class="customer-account__box-text">{{ 'customer_account.join_us_note' | t }}</p>
+                  <button type="button" class="customer-account__btn customer-account__sign-up">{{ 'customer_account.join_us' | t }}</button>
+                </div>
+              </div>
+            {%- endif -%}
           </div>
           <aside class="customer-account__aside">
             {%- if section.settings.login_image != blank -%}
@@ -204,6 +238,9 @@
       "shopDomain": {{ shop.permanent_domain | json }},
       "locale": {{ request.locale.iso_code | default: 'en-GB' | json }},
       "regionCountry": {{ localization.country.iso_code | default: 'GB' | json }},
+      "useShopifyAuthEmbed": {{ use_shopify_auth_embed | json }},
+      "customerAccountMenu": {{ customer_account_menu | json }},
+      "accountSignInUrl": {{ account_sign_in_path | json }},
       "mockMode": {{ section.settings.use_mock_data | json }},
       "content": {
         "returnsUrl": {{ section.settings.returns_url | default: "https://www.rowenandwren.co.uk/a/returns" | json }},
@@ -226,6 +263,9 @@
         "account_title": {{ 'content.account_title' | t | json }},
         "sign_in": {{ 'customer_account.sign_in' | t | json }},
         "sign_in_description": {{ 'customer_account.sign_in_description' | t | json }},
+        "sign_in_secure_note": {{ 'customer_account.sign_in_secure_note' | t | json }},
+        "sign_in_or_join": {{ 'customer_account.sign_in_or_join' | t | json }},
+        "join_us_note": {{ 'customer_account.join_us_note' | t | json }},
         "email_address": {{ 'customer_account.email_address' | t | json }},
         "password": {{ 'customer_account.password' | t | json }},
         "forgotten_password": {{ 'customer_account.forgotten_password' | t | json }},
@@ -304,6 +344,19 @@
       "label": "Use mock account data",
       "info": "Preview with sample data. No API credentials required. Turn off before publishing.",
       "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "use_shopify_auth_embed",
+      "label": "Embed Shopify sign-in",
+      "info": "Uses Shopify's account component in the login box so customers sign in on-page instead of a full redirect.",
+      "default": true
+    },
+    {
+      "type": "link_list",
+      "id": "customer_account_menu",
+      "label": "Customer account menu",
+      "default": "customer-account-main-menu"
     },
     {
       "type": "header",

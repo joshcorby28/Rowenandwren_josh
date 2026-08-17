@@ -157,6 +157,60 @@
   text-align: center;
 }
 
+/* Shopify account auth embed — keeps new customer sign-in on-page */
+.customer-account__box--auth {
+  gap: 0;
+}
+
+.customer-account__auth-embed {
+  display: block;
+  width: 100%;
+}
+
+.customer-account__auth-embed shopify-account {
+  display: block;
+  width: 100%;
+  --shopify-account-font-body: var(--account-font-body);
+  --shopify-account-font-heading: var(--account-font-heading);
+  --shopify-account-font-body-weight: 400;
+  --shopify-account-font-heading-weight: 400;
+  --shopify-account-color-accent: var(--account-brand);
+  --shopify-account-color-accent-text: #fff;
+  --shopify-account-color-background: #fff;
+  --shopify-account-color-text: var(--account-brand);
+  --shopify-account-radius-base: 0;
+  --shopify-account-radius-button: 0;
+  --shopify-account-radius-input: 0;
+}
+
+.customer-account__auth-embed shopify-account::part(signed-out-avatar) {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.customer-account__auth-trigger {
+  width: 100%;
+}
+
+.customer-account__item--auth {
+  grid-column: 1 / -1;
+}
+
+@media screen and (min-width: 901px) {
+  .customer-account__item--auth {
+    grid-column: 1 / span 6;
+  }
+}
+
+@media screen and (min-width: 1201px) {
+  .customer-account__item--auth {
+    grid-column: 2 / span 4;
+  }
+}
+
 /* Forms — matches .frm-Form */
 .customer-account__form-row {
   position: relative;
