@@ -608,7 +608,7 @@ class CustomerAccountApp {
   async init() {
     if (!this.#root) return;
 
-    this.#renderLoading();
+    const hasBootShell = Boolean(this.#root.querySelector('[data-account-boot]'));
 
     try {
       if (this.#mockMode && !this.#mockSignedOut) {
@@ -627,6 +627,10 @@ class CustomerAccountApp {
         return;
       }
 
+      if (!hasBootShell) {
+        this.#renderLoading();
+      }
+
       await this.#discoverEndpoints();
 
       const handledCallback = await this.#handleOAuthCallback();
@@ -635,7 +639,7 @@ class CustomerAccountApp {
       }
 
       this.#bindPopState();
-      await this.#renderCurrentView();
+      await this.#renderCurrentView(hasBootShell);
     } catch (error) {
       this.#renderError(error instanceof Error ? error.message : this.#t('error_generic'));
     }
@@ -984,10 +988,18 @@ class CustomerAccountApp {
     });
   }
 
-  async #renderCurrentView() {
+  /**
+   * @param {boolean} [hydrateGuest=false]
+   */
+  async #renderCurrentView(hydrateGuest = false) {
     if (!this.#root) return;
 
     if (!this.#isAuthenticated) {
+      if (hydrateGuest && this.#root.querySelector('[data-account-boot]')) {
+        this.#bindGuestEvents();
+        return;
+      }
+
       this.#renderGuest();
       return;
     }
@@ -1054,7 +1066,7 @@ class CustomerAccountApp {
               <div class="customer-account__item">
                 <div class="customer-account__box">
                   <h2 class="customer-account__box-title">${escapeHtml(this.#t('new_user'))}</h2>
-                  <a href="${escapeHtml(this.#registerUrl)}" class="customer-account__btn customer-account__sign-up">${escapeHtml(this.#t('join_us'))}</a>
+                  <button type="button" class="customer-account__btn customer-account__sign-up">${escapeHtml(this.#t('join_us'))}</button>
                 </div>
               </div>
             </div>
@@ -1064,6 +1076,10 @@ class CustomerAccountApp {
       </section>
     `;
 
+    this.#bindGuestEvents();
+  }
+
+  #bindGuestEvents() {
     const startSession = () => {
       if (this.#mockMode || this.#mockPersistParam) {
         this.#mockMode = true;
@@ -1077,12 +1093,16 @@ class CustomerAccountApp {
       });
     };
 
-    this.#root.querySelector('[data-login-form]')?.addEventListener('submit', (event) => {
+    this.#root?.querySelector('[data-login-form]')?.addEventListener('submit', (event) => {
       event.preventDefault();
       startSession();
     });
 
-    this.#root.querySelector('.customer-account__sign-in')?.addEventListener('click', () => {
+    this.#root?.querySelector('.customer-account__sign-in')?.addEventListener('click', () => {
+      startSession();
+    });
+
+    this.#root?.querySelector('.customer-account__sign-up')?.addEventListener('click', () => {
       startSession();
     });
   }

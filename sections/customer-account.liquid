@@ -123,11 +123,7 @@
     {%- endif -%}
   </template>
 
-  <div data-customer-account-app></div>
-
   {%- liquid
-    # OAuth redirect_uri must be an absolute https URL on the allowlist.
-    # Theme settings may store shopify://pages/account — normalize to /pages/account first.
     assign account_page_path = pages.account.url | default: page.url | default: '/pages/account'
     if settings.customer_account_page != blank
       assign account_page_path = settings.customer_account_page
@@ -137,9 +133,66 @@
     endif
     assign account_redirect = account_page_path
     unless account_redirect contains 'http'
-      assign account_redirect = request.origin | append: account_redirect
+      assign account_redirect = shop.url | append: account_redirect
     endunless
   -%}
+
+  <div data-customer-account-app>
+    <section class="customer-account customer-account--guest" data-account-boot>
+      <div class="customer-account__inner">
+        <div class="customer-account__body customer-account__body--split">
+          <div class="customer-account__items">
+            <div class="customer-account__item">
+              <div class="customer-account__box">
+                <h2 class="customer-account__box-title">{{ 'customer_account.sign_in' | t }}</h2>
+                <form class="customer-account__login-form" data-login-form action="#" method="post" novalidate>
+                  <div class="customer-account__form-row">
+                    <input class="customer-account__input" type="email" name="email" placeholder="{{ 'customer_account.email_address' | t }}" autocomplete="email">
+                  </div>
+                  <div class="customer-account__form-row">
+                    <input class="customer-account__input" type="password" name="password" placeholder="{{ 'customer_account.password' | t }}" autocomplete="current-password">
+                  </div>
+                  <div class="customer-account__form-footer">
+                    <button type="button" class="customer-account__btn customer-account__sign-in">{{ 'customer_account.sign_in' | t }}</button>
+                    <a class="customer-account__link customer-account__forgot" href="{{ routes.account_login_url }}#recover">{{ 'customer_account.forgotten_password' | t }}</a>
+                  </div>
+                </form>
+              </div>
+            </div>
+            <div class="customer-account__item">
+              <div class="customer-account__box">
+                <h2 class="customer-account__box-title">{{ 'customer_account.new_user' | t }}</h2>
+                <button type="button" class="customer-account__btn customer-account__sign-up">{{ 'customer_account.join_us' | t }}</button>
+              </div>
+            </div>
+          </div>
+          <aside class="customer-account__aside">
+            {%- if section.settings.login_image != blank -%}
+              {{
+                section.settings.login_image
+                | image_url: width: 1200
+                | image_tag:
+                  class: 'customer-account__aside-image',
+                  loading: 'eager',
+                  widths: '540, 720, 900, 1200',
+                  sizes: '(min-width: 901px) 50vw, 100vw'
+              }}
+            {%- elsif section.settings.header_image != blank -%}
+              {{
+                section.settings.header_image
+                | image_url: width: 1200
+                | image_tag:
+                  class: 'customer-account__aside-image',
+                  loading: 'eager',
+                  widths: '540, 720, 900, 1200',
+                  sizes: '(min-width: 901px) 50vw, 100vw'
+              }}
+            {%- endif -%}
+          </aside>
+        </div>
+      </div>
+    </section>
+  </div>
 
   <script type="application/json" data-customer-account-config>
     {
