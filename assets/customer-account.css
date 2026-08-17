@@ -48,25 +48,17 @@
   background-color: var(--account-login-bg);
 }
 
-/* base.css already pulls the first section up by --header-group-height when the
-   header is transparent, so only clear the header when that rule is in play. */
+/* base.css pulls the first section up under a transparent header, so always
+   include header height in the inner padding (matches live .acc-Account-login). */
 .customer-account--guest .customer-account__inner {
-  padding-top: 30px;
+  padding-top: calc(var(--account-height, 91px) + 30px);
   padding-bottom: 50px;
-}
-
-body:has(.header[transparent]) .customer-account--guest .customer-account__inner {
-  padding-top: calc(var(--account-height) + 30px);
 }
 
 @media screen and (min-width: 901px) {
   .customer-account--guest .customer-account__inner {
-    padding-top: 60px;
+    padding-top: calc(var(--account-height, 91px) + 60px);
     padding-bottom: 60px;
-  }
-
-  body:has(.header[transparent]) .customer-account--guest .customer-account__inner {
-    padding-top: calc(var(--account-height) + 60px);
   }
 }
 

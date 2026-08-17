@@ -126,10 +126,17 @@
   <div data-customer-account-app></div>
 
   {%- liquid
-    # OAuth requires an absolute redirect_uri that matches the Headless allowlist
-    # exactly. The account page setting stores a relative path, so qualify it.
-    assign account_redirect = settings.customer_account_page | default: page.url
-    unless account_redirect contains '://'
+    # OAuth redirect_uri must be an absolute https URL on the allowlist.
+    # Theme settings may store shopify://pages/account — normalize to /pages/account first.
+    assign account_page_path = pages.account.url | default: page.url | default: '/pages/account'
+    if settings.customer_account_page != blank
+      assign account_page_path = settings.customer_account_page
+    endif
+    if account_page_path contains 'shopify://'
+      assign account_page_path = account_page_path | remove_first: 'shopify:/'
+    endif
+    assign account_redirect = account_page_path
+    unless account_redirect contains 'http'
       assign account_redirect = request.origin | append: account_redirect
     endunless
   -%}
@@ -138,6 +145,8 @@
     {
       "clientId": {{ settings.customer_account_client_id | json }},
       "redirectUri": {{ account_redirect | json }},
+      "registerUrl": {{ routes.account_register_url | json }},
+      "loginUrl": {{ routes.account_login_url | json }},
       "shopDomain": {{ shop.permanent_domain | json }},
       "mockMode": {{ section.settings.use_mock_data | json }},
       "content": {

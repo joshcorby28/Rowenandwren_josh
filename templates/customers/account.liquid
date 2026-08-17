@@ -1,0 +1,10 @@
+{%- liquid
+  assign account_page_url = pages.account.url | default: '/pages/account'
+-%}
+<script>
+  window.location.replace({{ account_page_url | json }} + window.location.search + window.location.hash);
+</script>
+<noscript>
+  <meta http-equiv="refresh" content="0; url={{ account_page_url | escape }}">
+  <p><a href="{{ account_page_url }}">Continue to your account</a></p>
+</noscript>

@@ -156,6 +156,34 @@ function readTemplateHtml(scope, selector) {
   return el.innerHTML.trim();
 }
 
+/**
+ * OAuth redirect_uri must be an absolute https URL with no trailing slash.
+ * @param {string} uri
+ */
+function normalizeRedirectUri(uri) {
+  const fallback = `${window.location.origin}/pages/account`;
+
+  try {
+    let value = uri.trim();
+    if (!value) return fallback;
+
+    if (value.startsWith('shopify://')) {
+      value = value.replace(/^shopify:\/+/, '/');
+    }
+
+    const url = new URL(value, window.location.origin);
+    url.hash = '';
+
+    if (url.pathname.length > 1 && url.pathname.endsWith('/')) {
+      url.pathname = url.pathname.slice(0, -1);
+    }
+
+    return `${url.origin}${url.pathname}`;
+  } catch {
+    return fallback;
+  }
+}
+
 /** @type {string} */
 const MOCK_ORDER_1 = 'gid://shopify/Order/1001';
 /** @type {string} */
@@ -529,6 +557,12 @@ class CustomerAccountApp {
   #redirectUri = '';
 
   /** @type {string} */
+  #registerUrl = '/account/register';
+
+  /** @type {string} */
+  #loginUrl = '/account/login';
+
+  /** @type {string} */
   #shopDomain = '';
 
   /** @type {{ authorization_endpoint?: string; token_endpoint?: string; logout_endpoint?: string; graphql_api?: string } | null} */
@@ -561,7 +595,11 @@ class CustomerAccountApp {
     this.#strings = /** @type {Record<string, string>} */ (config.strings || {});
     this.#content = /** @type {Record<string, string>} */ (config.content || {});
     this.#clientId = String(config.clientId || '');
-    this.#redirectUri = String(config.redirectUri || window.location.href.split('?')[0].split('#')[0]);
+    this.#redirectUri = normalizeRedirectUri(
+      String(config.redirectUri || window.location.href.split('?')[0].split('#')[0])
+    );
+    this.#registerUrl = String(config.registerUrl || '/account/register');
+    this.#loginUrl = String(config.loginUrl || '/account/login');
     this.#shopDomain = String(config.shopDomain || window.location.hostname);
     this.#mockMode = resolveMockMode(config);
     this.#mockPersistParam = new URLSearchParams(window.location.search).has('mock');
@@ -999,7 +1037,7 @@ class CustomerAccountApp {
               <div class="customer-account__item">
                 <div class="customer-account__box">
                   <h2 class="customer-account__box-title">${escapeHtml(this.#t('sign_in'))}</h2>
-                  <form class="customer-account__login-form" data-login-form>
+                  <form class="customer-account__login-form" data-login-form action="#" method="post" novalidate>
                     <div class="customer-account__form-row">
                       <input class="customer-account__input" type="email" name="email" placeholder="${escapeHtml(this.#t('email_address'))}" autocomplete="email">
                     </div>
@@ -1007,8 +1045,8 @@ class CustomerAccountApp {
                       <input class="customer-account__input" type="password" name="password" placeholder="${escapeHtml(this.#t('password'))}" autocomplete="current-password">
                     </div>
                     <div class="customer-account__form-footer">
-                      <button type="submit" class="customer-account__btn">${escapeHtml(this.#t('sign_in'))}</button>
-                      <a class="customer-account__link customer-account__forgot" href="/account/login#recover">${escapeHtml(this.#t('forgotten_password'))}</a>
+                      <button type="button" class="customer-account__btn customer-account__sign-in">${escapeHtml(this.#t('sign_in'))}</button>
+                      <a class="customer-account__link customer-account__forgot" href="${escapeHtml(this.#loginUrl)}#recover">${escapeHtml(this.#t('forgotten_password'))}</a>
                     </div>
                   </form>
                 </div>
@@ -1016,7 +1054,7 @@ class CustomerAccountApp {
               <div class="customer-account__item">
                 <div class="customer-account__box">
                   <h2 class="customer-account__box-title">${escapeHtml(this.#t('new_user'))}</h2>
-                  <button type="button" class="customer-account__btn customer-account__sign-up">${escapeHtml(this.#t('join_us'))}</button>
+                  <a href="${escapeHtml(this.#registerUrl)}" class="customer-account__btn customer-account__sign-up">${escapeHtml(this.#t('join_us'))}</a>
                 </div>
               </div>
             </div>
@@ -1044,15 +1082,8 @@ class CustomerAccountApp {
       startSession();
     });
 
-    this.#root.querySelector('.customer-account__sign-up')?.addEventListener('click', () => {
+    this.#root.querySelector('.customer-account__sign-in')?.addEventListener('click', () => {
       startSession();
-    });
-
-    this.#root.querySelector('.customer-account__forgot')?.addEventListener('click', (event) => {
-      if (this.#mockMode || this.#mockPersistParam) {
-        event.preventDefault();
-        startSession();
-      }
     });
   }
 
