@@ -125,10 +125,19 @@
 
   <div data-customer-account-app></div>
 
+  {%- liquid
+    # OAuth requires an absolute redirect_uri that matches the Headless allowlist
+    # exactly. The account page setting stores a relative path, so qualify it.
+    assign account_redirect = settings.customer_account_page | default: page.url
+    unless account_redirect contains '://'
+      assign account_redirect = request.origin | append: account_redirect
+    endunless
+  -%}
+
   <script type="application/json" data-customer-account-config>
     {
       "clientId": {{ settings.customer_account_client_id | json }},
-      "redirectUri": {% if settings.customer_account_page != blank %}{{ settings.customer_account_page | json }}{% else %}{{ request.origin | append: page.url | json }}{% endif %},
+      "redirectUri": {{ account_redirect | json }},
       "shopDomain": {{ shop.permanent_domain | json }},
       "mockMode": {{ section.settings.use_mock_data | json }},
       "content": {
