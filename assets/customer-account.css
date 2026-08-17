@@ -754,6 +754,7 @@ body:has(.header[transparent]) .customer-account__header-content {
 @media screen and (min-width: 901px) {
   .customer-account__column--addresses {
     background-color: var(--account-grey);
+    padding: 35px 35px 50px;
   }
 }
 
@@ -786,6 +787,23 @@ body:has(.header[transparent]) .customer-account__header-content {
   font-size: 0.8125rem;
   letter-spacing: 0.0375rem;
   line-height: 1.3125rem;
+}
+
+.customer-account__empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.customer-account__empty-action {
+  margin: 0;
+}
+
+.customer-account__address-form-error {
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  text-align: left;
 }
 
 /* Orders — matches .acc-OrderSummary */

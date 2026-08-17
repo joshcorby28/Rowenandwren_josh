@@ -125,6 +125,19 @@ function escapeHtml(value) {
 }
 
 /**
+ * Shopify translation strings are HTML-escaped before JSON encoding.
+ * @param {string | null | undefined} value
+ */
+function decodeHtmlEntities(value) {
+  return String(value ?? '')
+    .replace(/&amp;#39;|&#39;|&apos;/g, "'")
+    .replace(/&amp;quot;|&quot;/g, '"')
+    .replace(/&amp;lt;|&lt;/g, '<')
+    .replace(/&amp;gt;|&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+}
+
+/**
  * @param {string} status
  */
 function formatStatus(status) {
@@ -255,8 +268,10 @@ const mockStore = {
       address2: 'Carthouse Lane',
       city: 'Horsell',
       province: 'Surrey',
+      zoneCode: 'ENG',
       zip: 'GU21 4XS',
       country: 'United Kingdom',
+      territoryCode: 'GB',
       phoneNumber: '',
     },
   ],
@@ -732,7 +747,7 @@ class CustomerAccountApp {
     Object.entries(replacements).forEach(([token, replacement]) => {
       value = value.replace(new RegExp(`{{\\s*${token}\\s*}}`, 'g'), String(replacement));
     });
-    return value;
+    return decodeHtmlEntities(value);
   }
 
   #renderLoading() {
@@ -1740,8 +1755,10 @@ class CustomerAccountApp {
                 address2
                 city
                 province
+                zoneCode
                 zip
                 country
+                territoryCode
                 phoneNumber
               }
             }
@@ -1755,7 +1772,10 @@ class CustomerAccountApp {
 
     const listHtml = addresses.length
       ? addresses.map((address) => this.#addressCardHtml(address, address.id === defaultId)).join('')
-      : `<p class="customer-account__empty">${escapeHtml(this.#t('no_addresses'))}</p>`;
+      : `<div class="customer-account__empty-state">
+          <p class="customer-account__empty">${escapeHtml(this.#t('no_addresses'))}</p>
+          <button type="button" class="customer-account__link customer-account__empty-action" data-show-address-form="new">${escapeHtml(this.#t('add_address'))}</button>
+        </div>`;
 
     if (!this.#root) return;
 
@@ -1889,7 +1909,7 @@ class CustomerAccountApp {
    */
   #addressFormHtml(address = {}, options = {}) {
     const id = address.id || 'new';
-    const countryOptions = this.#countryOptionsHtml(address.country);
+    const countryOptions = this.#countryOptionsHtml(address.territoryCode || address.country);
 
     const defaultCheckbox = options.includeDefault
       ? `<div class="customer-account__checkbox">
@@ -1898,8 +1918,10 @@ class CustomerAccountApp {
         </div>`
       : '';
 
-    const field = (name, key, extra = '') =>
-      `<div class="customer-account__form-field"><input class="customer-account__input" type="text" name="${name}" placeholder="${escapeHtml(this.#t(key))}" value="${escapeHtml(address[name] || '')}"${extra}></div>`;
+    const field = (name, key, extra = '', valueOverride) => {
+      const value = valueOverride ?? address[name] ?? '';
+      return `<div class="customer-account__form-field"><input class="customer-account__input" type="text" name="${name}" placeholder="${escapeHtml(this.#t(key))}" value="${escapeHtml(value)}"${extra}></div>`;
+    };
 
     return `
       <form class="customer-account__address-form-inner" data-address-form-inner="${escapeHtml(id)}">
@@ -1915,7 +1937,7 @@ class CustomerAccountApp {
             ${countryOptions}
           </select>
         </div>
-        ${field('province', 'province')}
+        ${field('province', 'province', '', address.zoneCode || address.province || '')}
         ${field('zip', 'postcode', ' required')}
         <div class="customer-account__form-field"><input class="customer-account__input" type="tel" name="phoneNumber" placeholder="${escapeHtml(this.#t('phone'))}" value="${escapeHtml(address.phoneNumber || '')}"></div>
         ${defaultCheckbox}
@@ -1933,24 +1955,43 @@ class CustomerAccountApp {
     const section = this.#root?.closest('[data-customer-account-section]');
     const fromTheme = section?.querySelector('[data-country-options]')?.innerHTML.trim();
 
-    const options =
-      fromTheme ||
-      ['United Kingdom', 'Ireland', 'France', 'Germany', 'Netherlands', 'Belgium', 'United States', 'Canada', 'Australia', 'New Zealand']
-        .map((country) => `<option value="${escapeHtml(country)}">${escapeHtml(country)}</option>`)
-        .join('');
+    const fallback = [
+      ['GB', 'United Kingdom'],
+      ['IE', 'Ireland'],
+      ['FR', 'France'],
+      ['DE', 'Germany'],
+      ['NL', 'Netherlands'],
+      ['BE', 'Belgium'],
+      ['US', 'United States'],
+      ['CA', 'Canada'],
+      ['AU', 'Australia'],
+      ['NZ', 'New Zealand'],
+    ]
+      .map(([code, name]) => `<option value="${escapeHtml(code)}">${escapeHtml(name)}</option>`)
+      .join('');
 
-    if (!selected) return options;
+    const optionsHtml = fromTheme || fallback;
+    if (!selected) return optionsHtml;
 
-    const escaped = selected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const wrap = document.createElement('select');
+    wrap.innerHTML = optionsHtml;
+    const normalized = selected.trim();
 
-    return options
-      .replace(/\sselected(="[^"]*")?/gi, '')
-      .replace(new RegExp(`<option value="${escaped}"`, 'i'), (match) => `${match} selected`);
+    wrap.querySelectorAll('option').forEach((option) => {
+      option.selected = option.value === normalized || option.textContent?.trim() === normalized;
+    });
+
+    return wrap.innerHTML;
   }
 
   #bindAddressActions() {
-    this.#root?.querySelector('[data-show-address-form="new"]')?.addEventListener('click', () => {
-      this.#root?.querySelector('[data-address-form="new"]')?.classList.add('customer-account__address-form--active');
+    this.#root?.querySelectorAll('[data-show-address-form="new"]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const form = this.#root?.querySelector('[data-address-form="new"]');
+        form?.classList.add('customer-account__address-form--active');
+        form?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        form?.querySelector('input, select')?.focus();
+      });
     });
 
     this.#root?.querySelectorAll('[data-edit-address]').forEach((button) => {
@@ -1989,44 +2030,124 @@ class CustomerAccountApp {
         event.preventDefault();
         const target = /** @type {HTMLFormElement} */ (event.currentTarget);
         const formId = target.getAttribute('data-address-form-inner');
+        const submitButton = target.querySelector('[type="submit"]');
         const formData = new FormData(target);
         const makeDefault = formData.get('defaultAddress') === 'on';
         formData.delete('defaultAddress');
-        const address = Object.fromEntries(formData.entries());
+        const address = this.#addressInputFromForm(formData);
 
-        if (formId && formId !== 'new') {
-          await this.#graphql(
-            `mutation UpdateAddress($id: ID!, $address: CustomerAddressInput!) {
-              customerAddressUpdate(addressId: $id, address: $address) {
-                customerAddress { id }
-                userErrors { message }
-              }
-            }`,
-            { id: formId, address }
-          );
-        } else {
-          const created = await this.#graphql(
-            `mutation CreateAddress($address: CustomerAddressInput!, $defaultAddress: Boolean) {
-              customerAddressCreate(address: $address, defaultAddress: $defaultAddress) {
-                customerAddress { id }
-                userErrors { message }
-              }
-            }`,
-            { address, defaultAddress: makeDefault }
-          );
+        this.#clearAddressFormError(target);
 
-          const createdId = created.customerAddressCreate?.customerAddress?.id;
-          if (makeDefault && createdId) {
-            await this.#graphql(
-              `mutation DefaultAddress($id: ID!) { customerAddressSetDefault(addressId: $id) { customerAddress { id } userErrors { message } } }`,
-              { id: createdId }
-            );
-          }
+        if (submitButton instanceof HTMLButtonElement) {
+          submitButton.disabled = true;
         }
 
-        await this.#renderAddresses();
+        try {
+          if (formId && formId !== 'new') {
+            const result = await this.#graphql(
+              `mutation UpdateAddress($id: ID!, $address: CustomerAddressInput!) {
+                customerAddressUpdate(addressId: $id, address: $address) {
+                  customerAddress { id }
+                  userErrors { message }
+                }
+              }`,
+              { id: formId, address }
+            );
+            this.#assertAddressMutationResult(result, 'customerAddressUpdate');
+          } else {
+            const created = await this.#graphql(
+              `mutation CreateAddress($address: CustomerAddressInput!, $defaultAddress: Boolean) {
+                customerAddressCreate(address: $address, defaultAddress: $defaultAddress) {
+                  customerAddress { id }
+                  userErrors { message }
+                }
+              }`,
+              { address, defaultAddress: makeDefault }
+            );
+            this.#assertAddressMutationResult(created, 'customerAddressCreate');
+
+            const createdId = created.customerAddressCreate?.customerAddress?.id;
+            if (makeDefault && createdId) {
+              const defaultResult = await this.#graphql(
+                `mutation DefaultAddress($id: ID!) { customerAddressSetDefault(addressId: $id) { customerAddress { id } userErrors { message } } }`,
+                { id: createdId }
+              );
+              this.#assertAddressMutationResult(defaultResult, 'customerAddressSetDefault');
+            }
+          }
+
+          await this.#renderAddresses();
+        } catch (error) {
+          const message = error instanceof Error ? error.message : this.#t('error_generic');
+          this.#showAddressFormError(target, message);
+        } finally {
+          if (submitButton instanceof HTMLButtonElement) {
+            submitButton.disabled = false;
+          }
+        }
       });
     });
+  }
+
+  /**
+   * @param {FormData} formData
+   */
+  #addressInputFromForm(formData) {
+    const data = Object.fromEntries(formData.entries());
+    const address = {
+      firstName: String(data.firstName || '').trim(),
+      lastName: String(data.lastName || '').trim(),
+      address1: String(data.address1 || '').trim(),
+      zip: String(data.zip || '').trim(),
+    };
+
+    const optional = {
+      company: String(data.company || '').trim(),
+      address2: String(data.address2 || '').trim(),
+      city: String(data.city || '').trim(),
+      zoneCode: String(data.province || '').trim(),
+      phoneNumber: String(data.phoneNumber || '').trim(),
+      territoryCode: String(data.country || '').trim(),
+    };
+
+    Object.entries(optional).forEach(([key, value]) => {
+      if (value) address[key] = value;
+    });
+
+    return address;
+  }
+
+  /**
+   * @param {Record<string, any>} result
+   * @param {string} key
+   */
+  #assertAddressMutationResult(result, key) {
+    const errors = result?.[key]?.userErrors;
+    if (errors?.length) {
+      throw new Error(errors[0].message || this.#t('error_generic'));
+    }
+  }
+
+  /**
+   * @param {HTMLFormElement} form
+   * @param {string} message
+   */
+  #showAddressFormError(form, message) {
+    let banner = form.querySelector('[data-address-form-error]');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.className = 'customer-account__state customer-account__state--error customer-account__address-form-error';
+      banner.setAttribute('data-address-form-error', '');
+      form.prepend(banner);
+    }
+    banner.innerHTML = `<p>${escapeHtml(message)}</p>`;
+  }
+
+  /**
+   * @param {HTMLFormElement} form
+   */
+  #clearAddressFormError(form) {
+    form.querySelector('[data-address-form-error]')?.remove();
   }
 
   /**

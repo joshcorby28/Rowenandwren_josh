@@ -9,7 +9,11 @@
   data-customer-account-section
   {{ section.shopify_attributes }}
 >
-  <select class="customer-account__hidden" data-country-options tabindex="-1" aria-hidden="true">{{ country_option_tags }}</select>
+  <select class="customer-account__hidden" data-country-options tabindex="-1" aria-hidden="true">
+    {%- for country in localization.available_countries -%}
+      <option value="{{ country.iso_code }}">{{ country.name }}</option>
+    {%- endfor -%}
+  </select>
 
   <template data-header-image>
     {%- if section.settings.header_image != blank -%}
