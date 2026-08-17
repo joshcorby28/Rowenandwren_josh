@@ -198,6 +198,7 @@
     {
       "clientId": {{ settings.customer_account_client_id | json }},
       "redirectUri": {{ account_redirect | json }},
+      "shopUrl": {{ shop.url | json }},
       "registerUrl": {{ routes.account_register_url | json }},
       "loginUrl": {{ routes.account_login_url | json }},
       "shopDomain": {{ shop.permanent_domain | json }},

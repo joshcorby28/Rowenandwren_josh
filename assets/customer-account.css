@@ -58,7 +58,7 @@
 
 @media screen and (min-width: 901px) {
   .customer-account--guest .customer-account__inner {
-    padding-top: calc(var(--account-height, 91px) + 60px);
+    padding-top: calc(var(--account-height, 91px) + 120px);
     padding-bottom: 60px;
   }
 }

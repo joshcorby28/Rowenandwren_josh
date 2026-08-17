@@ -158,10 +158,14 @@ function readTemplateHtml(scope, selector) {
 
 /**
  * OAuth redirect_uri must be an absolute https URL with no trailing slash.
+ * Prefer the store's primary domain (shop.url) so preview themes still use
+ * the production callback registered in Headless settings.
  * @param {string} uri
+ * @param {string} [shopUrl]
  */
-function normalizeRedirectUri(uri) {
-  const fallback = `${window.location.origin}/pages/account`;
+function normalizeRedirectUri(uri, shopUrl = '') {
+  const shopBase = shopUrl.replace(/\/$/, '');
+  const fallback = shopBase ? `${shopBase}/pages/account` : `${window.location.origin}/pages/account`;
 
   try {
     let value = uri.trim();
@@ -171,7 +175,11 @@ function normalizeRedirectUri(uri) {
       value = value.replace(/^shopify:\/+/, '/');
     }
 
-    const url = new URL(value, window.location.origin);
+    if (value.startsWith('/') && shopBase) {
+      value = `${shopBase}${value}`;
+    }
+
+    const url = new URL(value, shopBase || window.location.origin);
     url.hash = '';
 
     if (url.pathname.length > 1 && url.pathname.endsWith('/')) {
@@ -182,6 +190,31 @@ function normalizeRedirectUri(uri) {
   } catch {
     return fallback;
   }
+}
+
+/**
+ * The well-known endpoint only returns GraphQL URLs — derive OAuth endpoints
+ * from the shop ID embedded in the graphql_api URL.
+ * @param {{ graphql_api?: string; authorization_endpoint?: string; token_endpoint?: string; logout_endpoint?: string; mcp_api?: string }} payload
+ */
+function resolveOAuthEndpoints(payload) {
+  if (payload.authorization_endpoint && payload.token_endpoint) {
+    return payload;
+  }
+
+  const graphqlApi = payload.graphql_api || '';
+  const match = graphqlApi.match(/https:\/\/shopify\.com\/(\d+)\//);
+  if (!match) return payload;
+
+  const shopId = match[1];
+  const authBase = `https://shopify.com/authentication/${shopId}`;
+
+  return {
+    ...payload,
+    authorization_endpoint: `${authBase}/oauth/authorize`,
+    token_endpoint: `${authBase}/oauth/token`,
+    logout_endpoint: `${authBase}/logout`,
+  };
 }
 
 /** @type {string} */
@@ -596,7 +629,8 @@ class CustomerAccountApp {
     this.#content = /** @type {Record<string, string>} */ (config.content || {});
     this.#clientId = String(config.clientId || '');
     this.#redirectUri = normalizeRedirectUri(
-      String(config.redirectUri || window.location.href.split('?')[0].split('#')[0])
+      String(config.redirectUri || window.location.href.split('?')[0].split('#')[0]),
+      String(config.shopUrl || '')
     );
     this.#registerUrl = String(config.registerUrl || '/account/register');
     this.#loginUrl = String(config.loginUrl || '/account/login');
@@ -641,7 +675,13 @@ class CustomerAccountApp {
       this.#bindPopState();
       await this.#renderCurrentView(hasBootShell);
     } catch (error) {
-      this.#renderError(error instanceof Error ? error.message : this.#t('error_generic'));
+      const message = error instanceof Error ? error.message : this.#t('error_generic');
+      if (this.#root?.querySelector('[data-account-boot]')) {
+        this.#showGuestError(message);
+        this.#bindGuestEvents();
+      } else {
+        this.#renderError(message);
+      }
     }
   }
 
@@ -667,8 +707,36 @@ class CustomerAccountApp {
   /**
    * @param {string} message
    */
+  #showGuestError(message) {
+    if (!this.#root) return;
+
+    const boot = this.#root.querySelector('[data-account-boot]');
+    if (!boot) {
+      this.#renderError(message);
+      return;
+    }
+
+    let banner = boot.querySelector('[data-account-error]');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.className = 'customer-account__state customer-account__state--error';
+      banner.setAttribute('data-account-error', '');
+      boot.querySelector('.customer-account__inner')?.prepend(banner);
+    }
+
+    banner.innerHTML = `<p>${escapeHtml(message)}</p>`;
+  }
+
+  #clearGuestError() {
+    this.#root?.querySelector('[data-account-error]')?.remove();
+  }
+
+  /**
+   * @param {string} message
+   */
   #renderError(message) {
     if (!this.#root) return;
+    delete this.#root.dataset.guestBound;
     this.#root.innerHTML = `
       <div class="customer-account__state customer-account__state--error">
         <p>${escapeHtml(message)}</p>
@@ -685,7 +753,12 @@ class CustomerAccountApp {
     if (!response.ok) {
       throw new Error(this.#t('error_discovery'));
     }
-    this.#endpoints = await response.json();
+
+    this.#endpoints = resolveOAuthEndpoints(await response.json());
+
+    if (!this.#endpoints.authorization_endpoint || !this.#endpoints.token_endpoint) {
+      throw new Error(this.#t('error_discovery'));
+    }
   }
 
   async #handleOAuthCallback() {
@@ -1036,6 +1109,8 @@ class CustomerAccountApp {
   #renderGuest(message = '') {
     if (!this.#root) return;
 
+    if (this.#root) delete this.#root.dataset.guestBound;
+
     const section = this.#root.closest('[data-customer-account-section]');
     const loginImage =
       readTemplateHtml(section, '[data-login-image]') || readTemplateHtml(section, '[data-header-image]');
@@ -1080,7 +1155,18 @@ class CustomerAccountApp {
   }
 
   #bindGuestEvents() {
-    const startSession = () => {
+    if (this.#root?.dataset.guestBound === 'true') return;
+    if (this.#root) this.#root.dataset.guestBound = 'true';
+
+    const setButtonsDisabled = (disabled) => {
+      this.#root
+        ?.querySelectorAll('.customer-account__sign-in, .customer-account__sign-up')
+        .forEach((button) => {
+          button.disabled = disabled;
+        });
+    };
+
+    const startSession = async () => {
       if (this.#mockMode || this.#mockPersistParam) {
         this.#mockMode = true;
         this.#mockSignedOut = false;
@@ -1088,9 +1174,19 @@ class CustomerAccountApp {
         return;
       }
 
-      this.#startLogin().catch((error) => {
-        this.#renderError(error instanceof Error ? error.message : this.#t('error_generic'));
-      });
+      this.#clearGuestError();
+      setButtonsDisabled(true);
+
+      try {
+        if (!this.#endpoints?.authorization_endpoint) {
+          await this.#discoverEndpoints();
+        }
+
+        await this.#startLogin();
+      } catch (error) {
+        setButtonsDisabled(false);
+        this.#showGuestError(error instanceof Error ? error.message : this.#t('error_generic'));
+      }
     };
 
     this.#root?.querySelector('[data-login-form]')?.addEventListener('submit', (event) => {
