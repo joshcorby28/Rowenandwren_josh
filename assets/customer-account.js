@@ -598,6 +598,12 @@ class CustomerAccountApp {
   /** @type {string} */
   #shopDomain = '';
 
+  /** @type {string} */
+  #locale = 'en-GB';
+
+  /** @type {string} */
+  #regionCountry = 'GB';
+
   /** @type {{ authorization_endpoint?: string; token_endpoint?: string; logout_endpoint?: string; graphql_api?: string } | null} */
   #endpoints = null;
 
@@ -635,6 +641,8 @@ class CustomerAccountApp {
     this.#registerUrl = String(config.registerUrl || '/account/register');
     this.#loginUrl = String(config.loginUrl || '/account/login');
     this.#shopDomain = String(config.shopDomain || window.location.hostname);
+    this.#locale = String(config.locale || document.documentElement.lang || 'en-GB');
+    this.#regionCountry = String(config.regionCountry || 'GB');
     this.#mockMode = resolveMockMode(config);
     this.#mockPersistParam = new URLSearchParams(window.location.search).has('mock');
   }
@@ -923,6 +931,13 @@ class CustomerAccountApp {
     url.searchParams.set('state', state);
     url.searchParams.set('code_challenge', challenge);
     url.searchParams.set('code_challenge_method', 'S256');
+    url.searchParams.set('locale', this.#locale);
+    url.searchParams.set('region_country', this.#regionCountry);
+
+    const emailHint = this.#root?.querySelector('[data-login-form] [name="email"]')?.value.trim();
+    if (emailHint) {
+      url.searchParams.set('login_hint', emailHint);
+    }
 
     window.location.assign(url.toString());
   }

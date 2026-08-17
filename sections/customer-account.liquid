@@ -202,6 +202,8 @@
       "registerUrl": {{ routes.account_register_url | json }},
       "loginUrl": {{ routes.account_login_url | json }},
       "shopDomain": {{ shop.permanent_domain | json }},
+      "locale": {{ request.locale.iso_code | default: 'en-GB' | json }},
+      "regionCountry": {{ localization.country.iso_code | default: 'GB' | json }},
       "mockMode": {{ section.settings.use_mock_data | json }},
       "content": {
         "returnsUrl": {{ section.settings.returns_url | default: "https://www.rowenandwren.co.uk/a/returns" | json }},
