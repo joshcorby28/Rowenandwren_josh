@@ -49,6 +49,16 @@
   background-color: var(--account-login-bg);
 }
 
+.customer-account--loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40vh;
+  padding: 50px 20px;
+  background-color: var(--color-background);
+  color: var(--account-brand);
+}
+
 /* base.css pulls the first section up under a transparent header, so always
    include header height in the inner padding (matches live .acc-Account-login). */
 .customer-account--guest .customer-account__inner {

@@ -624,6 +624,9 @@ class CustomerAccountApp {
   /** @type {boolean} */
   #useShopifyAuthEmbed = false;
 
+  /** @type {boolean} */
+  #directLogin = true;
+
   /** @type {string} */
   #customerAccountMenu = 'customer-account-main-menu';
 
@@ -670,6 +673,7 @@ class CustomerAccountApp {
     this.#locale = String(config.locale || document.documentElement.lang || 'en-GB');
     this.#regionCountry = String(config.regionCountry || 'GB');
     this.#useShopifyAuthEmbed = Boolean(config.useShopifyAuthEmbed);
+    this.#directLogin = config.directLogin !== false && !this.#mockMode;
     this.#customerAccountMenu = String(config.customerAccountMenu || 'customer-account-main-menu');
     this.#accountSignInUrl = String(config.accountSignInUrl || '/pages/account');
     this.#mockMode = resolveMockMode(config);
@@ -704,7 +708,11 @@ class CustomerAccountApp {
 
       await this.#discoverEndpoints();
 
-      this.#cleanOAuthErrors();
+      const oauthError = this.#consumeOAuthError();
+      if (oauthError) {
+        this.#renderError(oauthError);
+        return;
+      }
 
       if (await this.#handleShopifyAuthRedirect()) {
         return;
@@ -715,12 +723,23 @@ class CustomerAccountApp {
         await this.#ensureValidSession();
       }
 
-      this.#bindPopState();
-      await this.#renderCurrentView(hasBootShell);
+      if (!this.#isAuthenticated) {
+        if (this.#directLogin) {
+          await this.#redirectToLogin();
+          return;
+        }
 
-      if (!this.#isAuthenticated && this.#useShopifyAuthEmbed) {
-        this.#initShopifyAuthEmbed();
+        this.#bindPopState();
+        await this.#renderCurrentView(hasBootShell);
+
+        if (this.#useShopifyAuthEmbed) {
+          this.#initShopifyAuthEmbed();
+        }
+        return;
       }
+
+      this.#bindPopState();
+      await this.#renderCurrentView();
     } catch (error) {
       const message = error instanceof Error ? error.message : this.#t('error_generic');
       if (this.#root?.querySelector('[data-account-boot]')) {
@@ -968,17 +987,48 @@ class CustomerAccountApp {
     document.dispatchEvent(new CustomEvent('customer-account:auth-change', { detail: { authenticated: false } }));
   }
 
-  #cleanOAuthErrors() {
+  /**
+   * @returns {string | null}
+   */
+  #consumeOAuthError() {
     const params = new URLSearchParams(window.location.search);
-    if (!params.get('error')) return false;
+    const error = params.get('error');
+    if (!error) return null;
 
-    const isBenign = params.get('error') === 'login_required';
+    const description = decodeHtmlEntities(params.get('error_description') || error);
     const cleanUrl = new URL(window.location.href);
     ['error', 'error_description', 'state'].forEach((key) => {
       cleanUrl.searchParams.delete(key);
     });
     window.history.replaceState({}, '', cleanUrl.toString());
-    return isBenign;
+
+    if (error === 'login_required') return null;
+
+    return description;
+  }
+
+  /**
+   * @param {{ loginHint?: string; prompt?: string }} [options]
+   */
+  async #redirectToLogin(options = {}) {
+    this.#renderLoading();
+
+    try {
+      if (!this.#endpoints?.authorization_endpoint) {
+        await this.#discoverEndpoints();
+      }
+
+      const loginHint =
+        options.loginHint || new URLSearchParams(window.location.search).get('login_hint') || undefined;
+
+      await this.#startLogin({
+        ...options,
+        loginHint,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : this.#t('error_generic');
+      this.#renderError(message);
+    }
   }
 
   /**
@@ -1263,6 +1313,11 @@ class CustomerAccountApp {
     if (!this.#root) return;
 
     if (!this.#isAuthenticated) {
+      if (this.#directLogin) {
+        await this.#redirectToLogin();
+        return;
+      }
+
       if (hydrateGuest && this.#root.querySelector('[data-account-boot]')) {
         if (this.#useShopifyAuthEmbed) {
           this.#initShopifyAuthEmbed();
@@ -1295,6 +1350,11 @@ class CustomerAccountApp {
     } catch (error) {
       const message = error instanceof Error ? error.message : this.#t('error_generic');
       if (message === this.#t('error_session_expired') || message === this.#t('error_unauthenticated')) {
+        if (this.#directLogin) {
+          await this.#redirectToLogin();
+          return;
+        }
+
         this.#renderGuest(message);
         return;
       }

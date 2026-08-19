@@ -144,14 +144,25 @@
       assign account_redirect = shop.url | append: account_redirect
     endunless
     assign account_sign_in_path = account_page_path
+    assign redirect_to_login = false
+    if section.settings.use_mock_data == false and section.settings.redirect_to_login != false
+      assign redirect_to_login = true
+    endif
     assign use_shopify_auth_embed = false
-    if shop.customer_accounts_enabled and section.settings.use_shopify_auth_embed and section.settings.use_mock_data == false
+    if redirect_to_login == false and shop.customer_accounts_enabled and section.settings.use_shopify_auth_embed and section.settings.use_mock_data == false
       assign use_shopify_auth_embed = true
     endif
     assign customer_account_menu = section.settings.customer_account_menu | default: 'customer-account-main-menu'
   -%}
 
   <div data-customer-account-app>
+    {%- if redirect_to_login -%}
+      <div class="customer-account customer-account--loading" data-account-boot>
+        <div class="customer-account__state">
+          <p>{{ 'customer_account.loading' | t }}</p>
+        </div>
+      </div>
+    {%- else -%}
     <section class="customer-account customer-account--guest" data-account-boot>
       <div class="customer-account__inner">
         <div class="customer-account__body customer-account__body--split">
@@ -230,6 +241,7 @@
         </div>
       </div>
     </section>
+    {%- endif -%}
   </div>
 
   <script type="application/json" data-customer-account-config>
@@ -243,6 +255,7 @@
       "locale": {{ request.locale.iso_code | default: 'en-GB' | json }},
       "regionCountry": {{ localization.country.iso_code | default: 'GB' | json }},
       "useShopifyAuthEmbed": {{ use_shopify_auth_embed | json }},
+      "directLogin": {{ redirect_to_login | json }},
       "customerAccountMenu": {{ customer_account_menu | json }},
       "accountSignInUrl": {{ account_sign_in_path | json }},
       "mockMode": {{ section.settings.use_mock_data | json }},
@@ -351,10 +364,17 @@
     },
     {
       "type": "checkbox",
+      "id": "redirect_to_login",
+      "label": "Redirect straight to Shopify sign-in",
+      "info": "Skip the branded login page and send customers directly to Shopify's secure sign-in. Recommended for live use.",
+      "default": true
+    },
+    {
+      "type": "checkbox",
       "id": "use_shopify_auth_embed",
       "label": "Embed Shopify sign-in",
-      "info": "Uses Shopify's account component in the login box so customers sign in on-page instead of a full redirect.",
-      "default": true
+      "info": "Only applies when direct sign-in redirect is turned off. Uses Shopify's account component in the login box.",
+      "default": false
     },
     {
       "type": "link_list",
