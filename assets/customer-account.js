@@ -616,6 +616,9 @@ class CustomerAccountApp {
   #shopDomain = '';
 
   /** @type {string} */
+  #shopUrl = '';
+
+  /** @type {string} */
   #locale = 'en-GB';
 
   /** @type {string} */
@@ -670,6 +673,7 @@ class CustomerAccountApp {
     this.#registerUrl = String(config.registerUrl || '/account/register');
     this.#loginUrl = String(config.loginUrl || '/account/login');
     this.#shopDomain = String(config.shopDomain || window.location.hostname);
+    this.#shopUrl = String(config.shopUrl || window.location.origin).replace(/\/$/, '');
     this.#locale = String(config.locale || document.documentElement.lang || 'en-GB');
     this.#regionCountry = String(config.regionCountry || 'GB');
     this.#useShopifyAuthEmbed = Boolean(config.useShopifyAuthEmbed);
@@ -1193,26 +1197,25 @@ class CustomerAccountApp {
       this.#isAuthenticated = false;
       this.#removeMockBanner();
       document.dispatchEvent(new CustomEvent('customer-account:auth-change', { detail: { authenticated: false } }));
-      this.#navigate('welcome');
-      await this.#renderCurrentView();
+      await this.#navigate('welcome');
       return;
     }
 
     const idToken = getStored('id_token');
     const logoutEndpoint = this.#endpoints?.logout_endpoint;
+    const homeUrl = this.#shopUrl || window.location.origin;
 
     this.#clearSession();
-    this.#navigate('welcome');
 
     if (logoutEndpoint && idToken) {
       const url = new URL(logoutEndpoint);
       url.searchParams.set('id_token_hint', idToken);
-      url.searchParams.set('post_logout_redirect_uri', this.#redirectUri);
+      url.searchParams.set('post_logout_redirect_uri', homeUrl);
       window.location.assign(url.toString());
       return;
     }
 
-    await this.#renderCurrentView();
+    window.location.assign(homeUrl);
   }
 
   /**
@@ -1295,9 +1298,16 @@ class CustomerAccountApp {
    * @param {AccountView} view
    * @param {{ orderId?: string | null }} [options]
    */
-  #navigate(view, options = {}) {
+  async #navigate(view, options = {}) {
     window.history.pushState({}, '', this.#routeUrl(view, options));
-    this.#renderCurrentView();
+    this.#renderLoading();
+
+    try {
+      await this.#renderCurrentView();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : this.#t('error_generic');
+      this.#renderError(message);
+    }
   }
 
   #bindPopState() {
@@ -1481,15 +1491,15 @@ class CustomerAccountApp {
    */
   #bindNav(activeView) {
     this.#root?.querySelectorAll('[data-nav-view]').forEach((link) => {
-      link.addEventListener('click', (event) => {
+      link.addEventListener('click', async (event) => {
         event.preventDefault();
         const view = /** @type {AccountView} */ (link.getAttribute('data-nav-view') || 'welcome');
-        this.#navigate(view);
+        await this.#navigate(view);
       });
     });
 
     this.#root?.querySelector('[data-logout]')?.addEventListener('click', () => {
-      this.#logout();
+      void this.#logout();
     });
   }
 
@@ -1674,7 +1684,7 @@ class CustomerAccountApp {
                   title
                   quantity
                   variantTitle
-                  originalTotalPrice { amount currencyCode }
+                  totalPrice { amount currencyCode }
                   image { url altText }
                 }
               }
@@ -1715,6 +1725,7 @@ class CustomerAccountApp {
 
     const lineItemsHtml = order.lineItems.edges
       .map(({ node: item }) => {
+        const lineTotal = item.totalPrice || item.originalTotalPrice;
         const image = item.image?.url
           ? `<img class="customer-account__line-item-image" src="${escapeHtml(item.image.url)}" alt="${escapeHtml(item.image.altText || item.title)}" loading="lazy">`
           : `<div class="customer-account__line-item-image"></div>`;
@@ -1727,7 +1738,7 @@ class CustomerAccountApp {
               ${item.variantTitle ? `<p class="customer-account__order-status">${escapeHtml(item.variantTitle)}</p>` : ''}
               <p class="customer-account__order-status">${escapeHtml(this.#t('quantity'))}: ${escapeHtml(String(item.quantity))}</p>
             </div>
-            <div class="customer-account__order-total">${escapeHtml(formatMoney(item.originalTotalPrice.amount, item.originalTotalPrice.currencyCode))}</div>
+            <div class="customer-account__order-total">${lineTotal ? escapeHtml(formatMoney(lineTotal.amount, lineTotal.currencyCode)) : ''}</div>
           </div>
         `;
       })
@@ -1791,13 +1802,14 @@ class CustomerAccountApp {
     `;
 
     this.#bindNav('orders');
-    this.#root.querySelector('[data-nav-view="orders"]')?.addEventListener('click', (event) => {
+    this.#root.querySelector('[data-nav-view="orders"]')?.addEventListener('click', async (event) => {
       event.preventDefault();
-      this.#navigate('orders');
+      await this.#navigate('orders');
     });
   }
 
   async #renderAddresses() {
+    this.#clearAddressPanelError();
     await this.#ensureCustomerFirstName();
 
     const data = await this.#graphql(`
@@ -1890,10 +1902,10 @@ class CustomerAccountApp {
 
   #bindOrderLinks() {
     this.#root?.querySelectorAll('[data-order-id]').forEach((link) => {
-      link.addEventListener('click', (event) => {
+      link.addEventListener('click', async (event) => {
         event.preventDefault();
         const orderId = link.getAttribute('data-order-id');
-        if (orderId) this.#navigate('order', { orderId });
+        if (orderId) await this.#navigate('order', { orderId });
       });
     });
   }
@@ -2065,11 +2077,24 @@ class CustomerAccountApp {
       button.addEventListener('click', async () => {
         const id = button.getAttribute('data-delete-address');
         if (!id || !window.confirm(this.#t('confirm_delete_address'))) return;
-        await this.#graphql(
-          `mutation DeleteAddress($id: ID!) { customerAddressDelete(addressId: $id) { deletedAddressId userErrors { message } } }`,
-          { id }
-        );
-        await this.#renderAddresses();
+
+        if (button instanceof HTMLButtonElement) {
+          button.disabled = true;
+        }
+
+        this.#clearAddressPanelError();
+
+        try {
+          await this.#deleteAddress(id);
+          await this.#renderAddresses();
+        } catch (error) {
+          const message = error instanceof Error ? error.message : this.#t('error_generic');
+          this.#showAddressPanelError(message);
+        } finally {
+          if (button instanceof HTMLButtonElement) {
+            button.disabled = false;
+          }
+        }
       });
     });
 
@@ -2077,11 +2102,24 @@ class CustomerAccountApp {
       button.addEventListener('click', async () => {
         const id = button.getAttribute('data-default-address');
         if (!id) return;
-        await this.#graphql(
-          `mutation DefaultAddress($id: ID!) { customerAddressSetDefault(addressId: $id) { customerAddress { id } userErrors { message } } }`,
-          { id }
-        );
-        await this.#renderAddresses();
+
+        if (button instanceof HTMLButtonElement) {
+          button.disabled = true;
+        }
+
+        this.#clearAddressPanelError();
+
+        try {
+          await this.#setDefaultAddress(id);
+          await this.#renderAddresses();
+        } catch (error) {
+          const message = error instanceof Error ? error.message : this.#t('error_generic');
+          this.#showAddressPanelError(message);
+        } finally {
+          if (button instanceof HTMLButtonElement) {
+            button.disabled = false;
+          }
+        }
       });
     });
 
@@ -2125,15 +2163,6 @@ class CustomerAccountApp {
               { address, defaultAddress: makeDefault }
             );
             this.#assertAddressMutationResult(created, 'customerAddressCreate');
-
-            const createdId = created.customerAddressCreate?.customerAddress?.id;
-            if (makeDefault && createdId) {
-              const defaultResult = await this.#graphql(
-                `mutation DefaultAddress($id: ID!) { customerAddressSetDefault(addressId: $id) { customerAddress { id } userErrors { message } } }`,
-                { id: createdId }
-              );
-              this.#assertAddressMutationResult(defaultResult, 'customerAddressSetDefault');
-            }
           }
 
           await this.#renderAddresses();
@@ -2208,6 +2237,82 @@ class CustomerAccountApp {
    */
   #clearAddressFormError(form) {
     form.querySelector('[data-address-form-error]')?.remove();
+  }
+
+  /**
+   * @param {string} addressId
+   */
+  async #setDefaultAddress(addressId) {
+    const result = await this.#graphql(
+      `mutation DefaultAddress($id: ID!) {
+        customerAddressSetDefault(addressId: $id) {
+          customerAddress { id }
+          userErrors { message }
+        }
+      }`,
+      { id: addressId }
+    );
+    this.#assertAddressMutationResult(result, 'customerAddressSetDefault');
+  }
+
+  /**
+   * @param {string} addressId
+   */
+  async #deleteAddress(addressId) {
+    const data = await this.#graphql(`
+      query CustomerAddressesForDelete {
+        customer {
+          defaultAddress { id }
+          addresses(first: 20) {
+            edges { node { id } }
+          }
+        }
+      }
+    `);
+
+    const defaultId = data.customer.defaultAddress?.id;
+    const addresses = data.customer.addresses.edges.map((edge) => edge.node.id);
+    const replacementId = addresses.find((id) => id !== addressId);
+
+    if (addressId === defaultId && replacementId) {
+      await this.#setDefaultAddress(replacementId);
+    }
+
+    const result = await this.#graphql(
+      `mutation DeleteAddress($id: ID!) {
+        customerAddressDelete(addressId: $id) {
+          deletedAddressId
+          userErrors { message }
+        }
+      }`,
+      { id: addressId }
+    );
+    this.#assertAddressMutationResult(result, 'customerAddressDelete');
+  }
+
+  /**
+   * @param {string} message
+   */
+  #showAddressPanelError(message) {
+    const panel = this.#root?.querySelector('.customer-account__column--addresses');
+    if (!panel) {
+      this.#renderError(message);
+      return;
+    }
+
+    let banner = panel.querySelector('[data-address-panel-error]');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.className = 'customer-account__state customer-account__state--error customer-account__address-panel-error';
+      banner.setAttribute('data-address-panel-error', '');
+      panel.prepend(banner);
+    }
+
+    banner.innerHTML = `<p>${escapeHtml(message)}</p>`;
+  }
+
+  #clearAddressPanelError() {
+    this.#root?.querySelector('[data-address-panel-error]')?.remove();
   }
 
   /**
